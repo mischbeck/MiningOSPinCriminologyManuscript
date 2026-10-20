@@ -1,6 +1,6 @@
 # Introduction
 
-This repository contains the quarto project for the article "Mining Transparency: Assessing Open Science Practices in Crime Research Over Time Using Machine Learning".
+This repository contains the quarto project for the article "[Mining Transparency: Assessing Open Science Practices in Crime Research Over Time Using Machine Learning](https://doi.org/10.31235/osf.io/ah2cv_v2)".
 
 This project only contains the replication files for the manuscript. The scraping, metadata download and classifier code is available in the method report which can be found in the OSF repository.
 
@@ -21,6 +21,8 @@ install.packages("renv")
 renv::restore()
 q()
 ```
+
+Build using the makefile:
 
 ```bash
 make all
@@ -52,9 +54,8 @@ For the R package `gtsummary`, you'll need to install the `libv8` library manual
 
 ggplot plots are generated using ggthemr. ggthemr can be installed using devtools. the installation is explained in the [git repository](https://github.com/Mikata-Project/ggthemr) of `ggthemr`.
 
-::: callout-important
-It is important to install the dependencies of gtsummary as well as the R packages devtools and ggthemr before restoring the virtual R environment.
-:::
+> [!WARNING]
+> It is important to install the dependencies of gtsummary as well as the R packages devtools and ggthemr before restoring the virtual R environment.
 
 It is also important to note that a full run of the document requires environment variables to be set in the `.Renviron` file. Here is an example:
 
