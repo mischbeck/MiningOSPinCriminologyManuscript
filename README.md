@@ -12,7 +12,8 @@ On linux:
 git clone https://github.com/mischbeck/MiningOSPinCriminologyManuscript
 cd MiningOSPinCriminologyManuscript
 /opt/R/4.5.3/bin/R
-``
+```
+
 In R:
 
 ```R
