@@ -1,0 +1,4 @@
+...1,step,before,after,dropped,logic
+1,"status == ""Done""",4265,4066,199,"~status == ""Done"""
+2,nchar(fulltext) > 1000,4066,3997,69,~nchar(fulltext) > 1000
+3,"is_statistical == ""Yes""",3997,1763,2234,"~is_statistical == ""Yes"""

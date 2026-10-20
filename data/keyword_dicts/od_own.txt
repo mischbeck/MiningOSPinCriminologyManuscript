@@ -1,0 +1,160 @@
+accessible at 
+accompanying dataset
+all data
+analysis code available
+analysis data available
+analysis pipeline available
+analysis scripts available
+anonymized data available
+available at 
+available from 
+available from the authors upon request
+available from the corresponding author
+available in repository
+available on dataverse
+available on dryad
+available on figshare
+available on github
+available on request because of [ethical/legal restrictions]
+available on request due to restrictions
+available on request from the corresponding author
+available on zenodo
+available subject to approval
+available upon request only
+badge for open data
+can be accessed at 
+can be downloaded from
+can be found at
+can be obtained from
+code repository
+commercial sensitivity prevents sharing
+computational notebooks
+computational workflow
+conforms to FAIR principles
+container available 
+creative commons license (for data/materials)
+data access statement
+data accessibility
+data and analysis scripts available
+data and code available
+data and materials available
+data are available upon request
+data are not available
+data are publicly available
+data availability
+data availability statement
+data available in the supplementary materials
+data available upon reasonable request 
+data deposition statement
+data descriptor
+data not available due to confidentiality
+data not available due to ethical restrictions
+data not available due to privacy
+data not publicly available
+data sharing policy
+data sharing statement
+data transparency
+data will be available upon publication
+data will be available upon request
+dataset available
+datasets available
+deposited at
+deposited in 
+deposited in dataverse
+deposited in dryad
+deposited in figshare
+deposited in osf
+deposited in zenodo
+docker image available
+doi for data
+downloadable dataset
+due to ethical concerns, supporting data cannot be made openly available
+due to licensing restrictions, data are not available
+due to patient confidentiality, the data are not available
+embl-ebi
+europe pmc datasets
+fair data
+figshare.com
+freely accessible
+freely available data
+genbank
+github repository
+github.com
+harvard dataverse
+have been made publicly available
+hosted in open repository
+hosted in public repository
+hosted on github
+hosted on osf
+icpsr
+jupyter notebook
+kaggle dataset
+licensed under creative commons
+made available at
+made available through
+ncbi (sequence data context)
+no additional data available
+no data available
+no data will be shared
+no datasets supporting this study
+no datasets were generated or analysed
+no new data were created
+no new datasets were generated
+no supplementary data
+not deposited in a repository
+open access data
+open data
+open data badge
+open license
+open science framework (osf)
+open source license
+openly available data
+osf
+osf.io
+pangaea
+protein data bank (pdb)
+provided at
+public repository
+publicly available dataset
+publicly available on the
+raw data available
+released under open license
+replication data
+replication dataset
+replication package available
+repository link
+reproducibility materials
+reproducibility package
+reproducibility statement
+reproducible code
+reproducible workflow
+restrictions apply to the availability of these data
+scripts provided
+sequence read archive (sra)
+shared via osf
+software available
+source code available
+statistical code available
+statistical scripts
+stored at
+stored on osf
+supplemental dataset
+supplemental files
+supplemental materials
+supplementary dataset
+supplementary dataset available
+supplementary information
+supporting dataset
+supporting information available
+supporting raw data
+the data are owned by [third party / company]
+the dataset cannot be shared
+the dataset is proprietary
+uk data service
+underlying data available
+underlying dataset
+underlying materials
+underlying raw data
+uploaded to osf
+workflow files
+zenodo.org

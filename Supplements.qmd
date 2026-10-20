@@ -1,0 +1,647 @@
+---
+title: "Supplementary Materials for"
+subtitle: "Mining Transparency:  Assessing Open Science Practices in Crime Research Over Time Using Machine Learning"
+top-level-division: section 
+prefer-html: true
+execute:
+  freeze: auto
+format:
+  pdf:
+    toc: true
+    lot: true
+    lof: true
+    fig-pos: H
+    mainfont: Aptos
+    code-overflow: wrap
+    include-in-header: 
+      - text: | # wrap lines in code output. Source: https://github.com/orgs/quarto-dev/discussions/4121
+          \usepackage{fvextra}
+          \DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+            commandchars=\\\{\},
+            breaklines, breaknonspaceingroup, breakanywhere
+          }
+      - text: '\pagenumbering{arabic}'
+    include-before: |
+      \newpage
+    include-before-body:
+      text: |
+        \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+          showspaces = false,
+          showtabs = false,
+          breaksymbolleft={},
+          breaklines
+        }
+date: ""
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("deps.R")
+
+debug_mode <- FALSE
+output_format <- "docx"
+```
+
+\newpage
+
+# Introduction
+
+This document serves as a supplement to the main article, providing additional details on the sampling approach, sample size determination, model training procedures, and evaluation metrics used in the study of Open Science Practices (OSP) adoption in scientific publications. The full methodological report, containing all code necessary for full replication can be accessed in the OSF repository.
+
+# Data Availability
+
+## Legal Considerations
+
+The TDM policies of all publishers whose content appears in the corpus were reviewed individually. The majority of publishers explicitly permit TDM under institutional access or open-access conditions, including SAGE, Cambridge University Press, Taylor & Francis, Nature, Emerald, Annual Reviews (upon request), and Wiley (via API). Elsevier permits TDM via its official API but not scraping. Oxford University Press permissions depend on the institutional library agreement, and Brill permits TDM depending on the individual article licence. ASCE explicitly prohibits TDM. For publishers where no explicit policy was found (Modern Law Review) or where policies were ambiguous, EU Directive 2019/790 (Articles 3 and 4) was applied as the operative framework, which broadly permits TDM for scientific research purposes by authorised users accessing content through institutional subscriptions. MDPI and Internet Policy Review content is fully open access and permissively licensed. Regardless of whether TDM is permitted, the right to mine does not extend to a right to redistribute the underlying full texts, which is the operative restriction on public data sharing in this study. Therefore, only metadata can be made available. The labelled dataset containing metadata and OSP labels for the sample is available in the OSF repository.
+
+## Replication Materials
+
+All code necessary for full replication of the study is available in the OSF repository at the following link:
+
+- https://osf.io/rvpc3/overview?view_only=0307dc0d99f74b50a738720a4a757aa0
+
+The Files contain three subfolders:
+- A code folder containing the full, **raw** quarto project with all code and data necessary for replication. A README file with instructions for replication is included in the code folder. This also includes a preprocessed dataset containing metadata and OSP labels for the sample, which can be used for replication of the analysis and figures in the main article without needing to run the full code. This version is more suitable for users with less experience in R, as it allows for a more straightforward replication of the results. A README file with instructions for replication is included in the data folder.
+- A manuscript folder containing the full manuscript quarto project that was used for all analyses and figures in the main article. 
+- The fully **rendered** Methodological Report, which contains all details on the methods used in the study, including the sampling approach, sample size determination, model training procedures, and evaluation metrics. The report also contains discussions of all decisions taken during the process, as well as the full descriptions and specifications of the models used and the preprocessing steps.
+
+# Sampling Approach
+
+The process involved in the following steps:
+
+1. A small subset of papers from Sample A was hand-coded by the author according to the operationalization.
+2. ChatGPT classified both the hand-coded as well as the not coded publications in Sample A.
+3. A random subsample of 50 papers was coded both manually and with ChatGPT. Disagreements were carefully reviewed and manual coding was reassessed. Agreement after correction was very high ( $\kappa$ = 83,2%), with ChatGPT outperforming the author's initial coding consistency.
+4. Due to good performance, ChatGPT was used to classify the rest of Sample A, and the combined manual/LLM labels formed the training and test data for subsequent ML models.
+5. ML Classifiers were trained on the produced classified subsample.
+
+Classification of the training Sample B followed a similar approach. For classification document feature matrices were generated using term frequencies of keywords. These keywords were both adopted from  @scogginsMeasuringTransparencySocial2024 as well as self created, and extended using ChatGPT. Keywords were context specific according to the classified variable. All classification tasks were binary classifications. After assembling the keywords, the SI classifier was fine-tuned. Using this classifier, the analytical sample was categorized. SI documents were then classified for applying OSPs.
+
+# Sample Size
+
+The sample size was determined by a precision-based calculation to ensure a $\pm$ 1.5 percentage point confidence interval for the SI prevalence as a precision-based sample size calculation was deemed more suitable for an exploratory prevalence study [@blandTyrannyPowerThere2009]. The calculations were based on prevalences arbitrarily estimated using the results of the literature review described in the methodological report in detail.
+
+The minimum calculated total sample size equals 4265 publications to achieve a 95% confidence interval with a half-width of $\pm$ 1.5 pp using the @agrestiApproximateBetterExact1998 method. When applying the assumed prevalence values for each OSP, the required sample sizes to achieve a 95% confidence interval with a half-width of $\pm$ 1.5 pp vary substantially. As shown in @tbl-cap-estimated-sample-sizes-osp, approximately 3,200 publications are needed to estimate OA at 25%, about 2,180 publications for OD at 15%, and only about 840 publications for OM or Preregistration at 5%. 
+
+```{r}
+#| echo: false
+#| results: asis
+#| tbl-cap: Estimated Minimum Sample Size
+
+# worst-case prevalence and desired half-width
+p_max <- 0.50     # is_statistical prevalence ~50%
+d      <- 0.015    # +-1.5 percentage points, full CI width = 0.03
+
+# compute required total n for 95% CI at that precision
+result <- prec_prop(
+  p          = p_max,
+  conf.width = 2*d,
+  conf.level = 0.95,
+  method     = "agresti-coull"
+)
+
+n_total <- result$n
+
+table <- result %>% as.tibble() %>%
+  select(-padj) %>%
+  mutate(n = ceiling(n)) %>%
+  rename(
+    `Minimum Sample Size` = n,
+    `Confidence Interval Width` = conf.width,
+    `Confidence Level` = conf.level,
+  ) %>% 
+  mutate(
+    `Expected Prevalence` = paste0(p, " (", lwr ,", " , upr , ")")
+  ) %>%
+  select(-lwr,-upr,-p) %>%
+  t()
+
+if(output_format == "pdf/tex") {
+  table %>% kable()
+} else {
+  table %>% kable()
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+```{r}
+#| echo: false
+#| results: asis
+#| label: tbl-cap-estimated-sample-sizes-osp
+#| tbl-cap: Estimated Minimum Sample Sizes - Open Science Practices
+
+expected_prev <- c(
+  `Open Access`    = 0.25,
+  `Open Data`      = 0.15,
+  `Open Materials` = 0.05,
+  `Preregistration`         = 0.05
+)
+
+required_ns <- sapply(expected_prev, function(p) {
+  res <- prec_prop(
+    p = p,
+    conf.width = 2*d,
+    conf.level = 0.95,
+    method = "agresti-coull"
+  )
+  res$n
+})
+
+summary_tbl <- tibble(
+  Category = names(required_ns),
+  `Required Sample Size` = required_ns
+)
+
+if(output_format == "pdf/tex") {
+  summary_tbl %>% kable(digits = 0)
+} else {
+  print("Table: Estimated Minimum Sample Sizes - Open Science Practices")
+}
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+
+These values are all below the worst-case requirement of 4,264, reflecting the lower variance at prevalences farther from 50%. At the assumed prevalences, 2,182 SI papers would be required to estimate OD at 15% with +- 1.5 percentage-points precision. This equals the OD requirement but is below the OA requirement, which on the other hand can be measured for the whole population, not just SI publications. Thus, while the sample is sufficiently large for OD, OM, and Preregistration, it falls slightly short of the target precision for OA, which could be measured on a larger scale.
+
+```{r}
+#| echo: false
+#| results: asis
+#| label: tbl-cap-estimated-min-sample-sizes-osp
+#| tbl-cap: Expected 95% CI for Open Access
+
+n_total <- 2182
+p_exp   <- 0.25
+
+# CI estimation with Agresti-Coull, given n and p
+result <- prec_prop(
+  p          = p_exp,
+  n          = n_total,
+  conf.width = NULL, # ask for CI width
+  conf.level = 0.95,
+  method     = "agresti-coull"
+)
+
+table_sampl_est <- result %>% as.tibble() %>%
+  select(-padj) %>%
+  rename(
+    `Sample Size` = n,
+    `Confidence Interval Width` = conf.width,
+    `Confidence Level` = conf.level,
+  ) %>% 
+  mutate(
+    `Confidence Interval Width` = percent(`Confidence Interval Width`, accuracy = 0.01),
+    `Expected Prevalence` = paste0(p, " (", round(lwr,2) ,", " , round(upr,2) , ")")
+  ) %>%
+  select(-lwr,-upr,-p) %>%
+  t()
+
+if(output_format == "pdf/tex") {
+  table_sampl_est %>% kable(digits = 2)
+} else {
+  print("Table: Expected 95% CI for Open Access")
+}
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+An overestimation the prevalence of each OSP in the population can lead to potential problems with all following steps. The true prevalences and confidence intervals along with performance diagnostics of trained models were assessed after all classification tasks were processed. An estimation of the prevalences per year was not suitable as no detailed information about those proportions was available. Instead, the established approach to stratify the sample proportionally to the population was used [@larsenProportionalAllocationStrata2008]. 
+
+# Full Text Retrieval
+
+Legal aspects were carefully considered throughout the development. Within the EU, scraping is legal for scientific purposes [@urhg-60d-tdm], but institutional contracts can override this. Scraping was therefore limited to the university network and only to publishers that permit it while other publishers were scraped outside of the network. The scraper might be made publicly available in the future. 
+
+The fulltexts were downloaded using SciPaperLoader, a self-developed Flask-based web application designed for automated scientific paper processing and metadata extraction, built by the author. The app that lets the user import scientific paper metadata (CSV or manual), then schedules and runs automated fetching/parsing jobs to extract content/metadata and track each paper's processing status with logs and a dashboard. It supports many academic publishers via mostly YAML-configured parsers (plus optional custom Python parsers) that leverage Beautiful Soup, with a streamlined focus on paywall detection and transparent pattern-matching output. 
+
+![Fulltext Downloader Screenshot: Control Panel](img/2025-08-04-174744_hyprshot.png){width=40%}
+
+The scraper produced .txt files using the following standardized format while also downloading the full HTML and PDF files, if available. This enabled later re-extraction if necessary.
+
+```
+DOI: 10.14763/2017.1.454
+DOI URL: https://doi.org/10.14763/2017.1.454
+Extracted URL: https://policyreview.info/articles/analysis/passage-australias-data-retention-
+regime-national-security-human-rights-and-media
+Extracted: 2025-08-05T16:57:14.685108
+Parser: policyreview
+Publisher: policyreview
+Extraction Method: HTML
+Paywall Status: open_access
+================================================================================
+
+TITLE: The passage of Australia's data retention regime: national security, human rights, and media scrutiny
+
+AUTHORS: Nicolas P. Suzor, Kylie Pappalardo, Natalie McIntosh
+
+ABSTRACT:
+Abstract
+            In 2015, the Australian government passed the Telecommunications (Interception and Access) Amendment (Data Retention) Act, which requires ISPs to collect metadata about their users and store this metadata for two years. From its conception, Australia's data retention scheme has been controversial. In this article we examine how public interest concerns were addressed in Australian news media during the Act's passage. The Act was ultimately passed with bipartisan support, despite serious deficiencies. We show how the Act's complexity seemed to limit engaged critique in the mainstream media and how fears over terrorist attacks were exploited to secure the Act's passage through parliament.
+
+FULL TEXT:
+Title: The passage of Australia's data retention regime: national security, human rights, and media scrutiny
+
+Abstract: Abstract
+            In 2015, the Australian government passed the Telecommunications (Interception and Access) Amendment (Data Retention) Act, which requires ISPs to collect metadata about their users and store this metadata for two years. From its conception, Australia's data retention scheme has been controversial. In this article we examine how public interest concerns were addressed in Australian news media during the Act's passage. The Act was ultimately passed with bipartisan support, despite serious deficiencies. We show how the Act's complexity seemed to limit engaged critique in the mainstream media and how fears over terrorist attacks were exploited to secure the Act's passage through parliament.
+
+This paper is part of Australian internet policy, a special issue of Internet Policy Review guest-edited by Angela Daly and Julian Thomas.
+
+[FULLTEXT REDACTED IN THIS DOCUMENT]
+```
+
+These fulltexts along with PDF files were then preprocessed. A more thorough analysis of how the fulltext data was handled can be found in the full methodological report.
+
+# Classification Model Training
+
+```{r}
+#| fig-cap: Confusion Matrices - Manual vs ChatGPT Labels for Open Science Practices and Statistical Inference
+#| label: fig-cfm-osp
+#| fig-height: 12
+#| fig-width: 11
+cfm_gpt_open_material_corrected <- readRDS("figures/cfm_gpt_open_material_corrected.rds")
+cfm_gpt_pre_registration_corrected <- readRDS("figures/cfm_gpt_pre_registration_corrected.rds")
+cfm_gpt_open_data_corrected <- readRDS("figures/cfm_gpt_open_data_corrected.rds")
+cfm_gpt_is_statistical_corrected <- readRDS("figures/cfm_gpt_is_statistical_corrected.rds") + labs(caption = paste0("n = 225"))
+
+plots <- c("cfm_gpt_open_material_corrected", 
+           "cfm_gpt_pre_registration_corrected", 
+           "cfm_gpt_open_data_corrected", 
+           "cfm_gpt_is_statistical_corrected")
+titles <- c("Open Materials", "Preregistration", "Open Data", "Statistical Inference")
+
+plotlist <- list()
+for (i in seq_along(plots)) {
+  plot <- get(plots[i]) +
+    labs(
+      title = titles[i],
+      ) +
+      ylab("ChatGPT") +
+      xlab("Manual")
+
+  plot <- plot + scale_fill_gradient(high = "white", low = osp_cols[titles[i]])
+  plotlist[[plots[i]]] <- plot
+}
+
+# combine plots using patchwork
+combined_plot <- wrap_plots(plotlist, ncol = 2) #+ # remove legend
+ # plot_layout(guides = "collect") & theme(legend.position = "none")
+
+print(combined_plot)
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+Overall agreement between manual and ChatGPT-based coding after resolving initial disagreements was good, as shown in @fig-cfm-osp. Nevertheless, some categories exhibited extreme class imbalance, especially preregistration, which later proved problematic in subsequent stages of the process. Given the small number of positive cases, the ChatGPT-based classification was used to extend the training sample further. A full classification of the analytical sample using an LLM was considered desirable, but was not financially feasible within the project.
+
+For hyperparameter tuning and training of the ML models, the coded datasets were split into an training sample of 80% and a validation sample of 20%, stratified by the target variable as this improves training in scenarios with high class imbalance [@hilbertModelle2025]. K-Fold cross-validation was used during hyperparameter tuning to further iomprove model performance and reduce overfitting. 
+
+The features differed in the feature construction: "TF" feature sets contained simple term frequencies of the keywords in each category whereas "n-gram" feature sets were constructed containing term frequencies of multi-word-phrases. Using ngrams has proven to enhance results in comparison to simple term frequencies in other contexts [e.g. @jandotInteractiveSemanticFeaturing2016; @ahmedDetectionOnlineFake2017], which is why I chose to include multi-gram (2 or 3 word phrases) feature sets as well as term-frequency and ngram combined feature sets in the evaluations. Multiple machine learning models were trained on those feature sets, resulting in multiple model-featureset combinations for each OSP assessed. An example of those combinations and the evaluation can be seen in @fig-jobs-osp.
+
+```{r}
+#| fig-height: 5
+#| fig-width: 10
+#| label: fig-jobs-osp
+#| fig-cap: Model, Feature and Variable Combinations
+#| fig-pos: h
+
+axis_mapping <- c(
+  "is_prereg" = "Preregistration",
+  "is_open_data" = "Open Data", 
+  "is_open_materials" = "Open Materials",
+  "is_open_access" = "Open Access"
+)
+
+jobsplot <- readRDS("figures/jobs_osp.rds") +
+  labs(
+    title = "",
+    subtitle = "",
+    x = "",
+    y = ""
+  )  + 
+  scale_fill_manual(
+    values = osp_cols2,
+    labels = axis_mapping
+  )
+
+print(jobsplot)
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+The two top-left graphs in @fig-evaluation-stat, @fig-evaluation-od, @fig-evaluation-om and @fig-evaluation-pr show the performance of different feature set and model combinations measured by ROC-AUC [@fawcettIntroductionROCAnalysis2006]. In @fig-evaluation-stat, the top graph identifies the XGBoost classifier combined with a simple term frequencies dataset as the top-performing model. The top-right graph shows the most important terms for the XGBoost classifier, which are primarily statistical. The confusion matrix shows that the model is quite precise, with a 91.7% accuracy and a Cohen's Kappa of 0.832. This performance is good compared to hand-coded cases. Model calibration was not highly successful as the model's probabilities were already well-calibrated, mostly at the extremes of 0 and 1. A probability threshold of 0.25 was chosen based on three different metrics. This threshold is used for the final classification, where any case with a predicted probability greater than 0.25 is classified as 1. It's also important to note that the OSP classifiers performed much worse, as seen below.
+
+As expected, $\kappa$ is typically lower than Accuracy due to chance-agreement correction [@naiduReviewEvaluationMetrics2023].
+
+$$
+\text{Accuracy} = \frac{TP + TN}{N} \quad \text{and} \quad
+\kappa = \frac{p_o - p_e}{1 - p_e}
+$$
+
+OM (@fig-evaluation-om) tells a different story: despite nominal Accuracy of $94.3\%$, balanced accuracy drops to $60.0\%$ and $\kappa$ to $31.7\%$. Sensitivity is $20.0\%$ while specificity is $100.0\%$, yielding $F_1 = 33.3\%$. High nominal accuracy with a large miss rate indicates accuracy inflation under imbalance, and the p-value of $0.434$ confirms that accuracy does not exceed the no-information rate meaningfully.
+
+OD (@fig-evaluation-od) sits between these extremes: accuracy $= 88.6\%$, balanced accuracy $= 93.7\%$, sensitivity $= 100.0\%$, specificity $= 87.3\%$. The classifier captures all positives but at the cost of eight false positives against seven true positives and 55 true negatives, which depresses precision and yields $F_1 = 63.6\%$. $\kappa = 57.9\%$ indicates moderate agreement beyond chance, and $p = 0.736$ again signals that nominal accuracy is uninformative under imbalance.
+
+In short, Preregistration appears comparatively reliable, OM is recall-limited, and OD is precision-limited. These profiles motivate reporting metrics suited to extreme class imbalance-Precision $P = \frac{TP}{TP+FP}$, Recall $R = \frac{TP}{TP+FN}$, balanced accuracy $BA = \frac{P+R}{2}$ - and anticipating how errors propagate into downstream estimates [@murphyMachineLearningProbabilistic2012; @fawcettIntroductionROCAnalysis2006].
+
+Category-specific results highlight class-imbalance constraints. Preregistration has only two positives in the validation sample, which makes any estimate imprecise, also resulting in a very undesirably large p-value of the accuracy-no-information-rate assumption[^1]. OM shows one false negative among six positives, and OD shows one false negative among eight positives. The SI classifier shows five false positives alongside one hundred twelve true positives and no false negatives, with all metrics indicating excellent performance.
+
+[^1]: The accuracy-no-information-rate p-value tests the null hypothesis that the accuracy is equal to the no-information rate or the accuracy when always predicting the most frequent class [@kuhnBuildingPredictiveModels2008].
+
+The ML classifiers trained on GPT labels inherit GPT's strengths and the data's sparsity.For the relatively small 20% validation set coded by GPT, the open-science practice classifiers are less precise and less reliable than the Statistical-Inference classifier. Preregistration (@fig-evaluation-pr) appears strongest (balanced accuracy $= 99.2\%$, $F_1 = 88.9\%$, $\kappa = 88.1\%$), but the counts are sparse (four true positives, one false negative, no false positives), and the p-value versus the no-information rate ($p = 0.0853$) is not conventionally significant-an expected consequence of the very low base rate rather than a systematic error.
+
+
+![Classifier Evaluation: Statistical Inference](figures/combined_plot_is_statistical.pdf){#fig-evaluation-stat}
+
+![Classifier Evaluation: Open Data](figures/combined_plot_is_open_data.pdf){#fig-evaluation-od fig-pos=H}
+
+![Classifier Evaluation: Open Materials](figures/combined_plot_is_open_materials.pdf){#fig-evaluation-om fig-pos=H}
+
+![Classifier Evaluation: Preregistration](figures/combined_plot_is_prereg.pdf){#fig-evaluation-pr fig-pos=H}
+
+
+# Tables: OSP Adoption Over Time Among Statistical Inference Papers
+
+The following tables contain the values for Figure 2: OSP Adoption Over Time, among statistical inference papers (design-weighted) that are not adjusted for misclassification. Rogan-Gladen adjusted per-year-values were not calculated, given the already enormous errors in the total estimation.
+
+```{r}
+#| label: osp-adoption-tables
+#| tbl-caption: Open Data
+df <- qs_read(file_sample_analysis)
+population <- qs_read(file_meta_final)
+
+df <- df %>% mutate(published_year = as.integer(published_year))
+population <- population %>% mutate(published_year = as.integer(published_year))
+
+# Binary recodes for all targets 
+targets <- c("is_open_access","is_open_data","is_open_materials","is_prereg")
+
+df_bin <- df %>%
+  mutate(
+    across(
+      all_of(targets),
+      ~ ifelse(. == "Yes", 1, ifelse(. == "No", 0, NA_real_)),
+      .names = "{.col}_bin"
+    ))
+    
+# Frame totals by year (the ~40k post-keyword frame)
+pop_year <- population %>%
+  count(published_year, name = "Freq") %>%
+  arrange(published_year)
+
+# add counts
+df_bin <- df_bin %>%
+  left_join(pop_year %>% rename(N_y = Freq), by = "published_year")
+
+# Base design on all sampled records, stratified by year, finite population correction
+des0 <- svydesign(ids = ~1, strata = ~published_year, fpc = ~N_y, data = df_bin)
+des_ps <- postStratify(design = des0, strata = ~published_year, population = pop_year)
+
+# Make sure the *_bin fields are truly numeric 0/1 inside the design
+des_ps <- des_ps %>% update(
+  is_open_access_bin    = as.numeric(df_bin$is_open_access == "Yes"),
+  is_open_data_bin      = as.numeric(df_bin$is_open_data == "Yes"),
+  is_open_materials_bin = as.numeric(df_bin$is_open_materials == "Yes"),
+  is_prereg_bin         = as.numeric(df_bin$is_prereg == "Yes"),
+  is_statistical_bin    = as.numeric(df_bin$is_statistical == "Yes")
+)
+
+# restrict to statistical inference pubs at analysis time
+des_stat <- subset(des_ps, is_statistical_bin == 1)
+
+# This tells svyby to run svyciprop and also return the confidence interval
+ci_prop <- function(x, ...) {
+  # The formula is ~x because svyby passes the column itself
+  est <- svyciprop(~x, design = des_stat, method = "logit", na.rm = TRUE, ...)
+  ci <- confint(est)
+  # Return a named vector
+  c(prop = as.numeric(coef(est)), prop_low = ci[1], prop_upp = ci[2])
+}
+
+vars <- c(
+  "is_prereg_bin"         = "Preregistration",
+  "is_open_data_bin"      = "Open Data",
+  "is_open_materials_bin" = "Open Materials",
+  "is_open_access_bin"    = "Open Access"
+)
+
+# Loop through each variable, run svyby, and collect results in a list
+results_list <- lapply(names(vars), function(var_name) {
+  
+  # Create a formula for the specific variable, e.g., ~is_prereg_bin
+  form <- as.formula(paste0("~", var_name))
+  
+  # Run svyby for this single variable
+  # vartype = "ci" automatically calculates the confidence interval
+  res_by_year <- svyby(
+    formula = form,
+    by = ~published_year,
+    design = des_stat,
+    FUN = svyciprop,
+    method = "beta", # i'd use logit, but it always causes an error for this case. I was only able to solve this after one day of work: if using logit as planned, a warning about "observations with zero weight not used for calculating dispersion" appears, which indicates the failure of the iterative process to find the best estimates - which results in one value failing to be calculated (open access in year 2013). 
+    vartype = "ci",
+    na.rm = TRUE
+  )
+  
+  # Add a column with the "pretty" variable name (e.g., "Preregistration")
+  res_by_year$variable <- vars[var_name]
+  
+  # Rename the columns to match what ggplot expects
+  # The output columns are the variable name (e.g., is_prereg_bin), ci_l, and ci_u
+  colnames(res_by_year)[2] <- "prop" # The second column is always the proportion
+  
+  return(res_by_year)
+})
+
+# Combine the list of results into a single data frame
+yearly_long <- bind_rows(results_list) %>%
+  # Rename ci columns to prop_low and prop_upp for your ggplot code
+  rename(prop_low = ci_l, prop_upp = ci_u)
+
+vars <- c(
+  "is_prereg_bin" = "Preregistration",
+  "is_open_data_bin" = "Open Data",
+  "is_open_materials_bin" = "Open Materials",
+  "is_open_access_bin" = "Open Access"
+)
+
+legend_labs <- c(
+  "Preregistration"= "Preregistration",
+  "Open Data"= "Open Data",
+  "Open Materials" = "Open Materials",
+  "Open Access" = "Open Access"
+)
+
+p <- ggplot(yearly_long, aes(x = published_year, y = prop, color = variable)) +
+  geom_ribbon(
+    aes(
+      ymin = prop_low, 
+      ymax = prop_upp, 
+      fill = variable
+      ),
+    alpha = 0.10, 
+    color = NA
+    ) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.5) +
+  scale_x_continuous(
+    breaks = pretty(unique(yearly_long$published_year), n = 13)) +
+  scale_y_continuous(
+    labels = scales::percent_format(accuracy = 1), limits = c(0, 0.65),
+    breaks = pretty(seq(0, 0.65, by = 0.05), n = 7)
+    ) +
+  scale_fill_manual(values = osp_cols, guide = "none") +
+  scale_color_manual(
+    values = osp_cols,
+    name = "",
+    labels = function(x) legend_labs[x]
+    ) +
+  labs(
+    x = "", y = "",
+    color = ""#,
+    #title = "OSP Adoption Over Time",
+    #subtitle = "Among statistical inference papers (design-weighted to frame-by-year totals)"
+  ) +
+  theme(legend.position = "bottom") +
+  guides(color = guide_legend(ncol = 4))
+
+tbl_osp_prev_overall_dsadj <- yearly_long
+
+# rename published_year prop prop_low prop_upp variable
+tbl_osp_prev_overall_dsadj_b <- tbl_osp_prev_overall_dsadj %>% 
+  select(published_year, prop, prop_low, prop_upp, variable) %>%
+  filter(variable == "Open Data") %>%
+  select(-variable) %>%
+  mutate(
+    prop = percent(prop, accuracy = 0.1),
+    prop_low = percent(prop_low, accuracy = 0.1),
+    prop_upp = percent(prop_upp, accuracy = 0.1),
+  ) %>%
+  rename(
+    `Year` = published_year,
+    `Proportion` = prop,
+    `.95 CI (Lower)` = prop_low,
+    `.95 CI (Upper)` = prop_upp
+  ) %>%
+  kable(digits = 2, row.names = FALSE, booktabs = TRUE, caption = "Open Data") %>%
+  kable_styling(position = "center", full_width = FALSE)
+
+if(output_format == "pdf/tex") {
+  tbl_osp_prev_overall_dsadj_b
+} else {
+  print("Table: Open Data")
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+```{r}
+# rename published_year prop prop_low prop_upp variable
+tbl_osp_prev_overall_dsadj_a <- tbl_osp_prev_overall_dsadj %>% 
+  select(published_year, prop, prop_low, prop_upp, variable) %>%
+  filter(variable == "Preregistration") %>%
+  select(-variable) %>%
+  mutate(
+    prop = percent(prop, accuracy = 0.1),
+    prop_low = percent(prop_low, accuracy = 0.1),
+    prop_upp = percent(prop_upp, accuracy = 0.1),
+  ) %>%
+  rename(
+    `Year` = published_year,
+    `Proportion` = prop,
+    `.95 CI (Lower)` = prop_low,
+    `.95 CI (Upper)` = prop_upp
+  ) %>%
+  kable(digits = 2, row.names = FALSE, booktabs = TRUE, caption = "Preregistration") %>%
+  kable_styling(position = "center", full_width = FALSE)
+
+if(output_format == "pdf/tex") {
+  tbl_osp_prev_overall_dsadj_a
+} else {
+  print("Table: Preregistration")
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+```{r}
+# rename published_year prop prop_low prop_upp variable
+tbl_osp_prev_overall_dsadj_c <- tbl_osp_prev_overall_dsadj %>% 
+  select(published_year, prop, prop_low, prop_upp, variable) %>%
+  filter(variable == "Open Materials") %>%
+  select(-variable) %>%
+  mutate(
+    prop = percent(prop, accuracy = 0.1),
+    prop_low = percent(prop_low, accuracy = 0.1),
+    prop_upp = percent(prop_upp, accuracy = 0.1),
+  ) %>%
+  rename(
+    `Year` = published_year,
+    `Proportion` = prop,
+    `.95 CI (Lower)` = prop_low,
+    `.95 CI (Upper)` = prop_upp
+  ) %>%
+  kable(digits = 2, row.names = FALSE, booktabs = TRUE, caption = "Open Materials") %>%
+  kable_styling(position = "center", full_width = FALSE)
+
+if(output_format == "pdf/tex") {
+  tbl_osp_prev_overall_dsadj_c
+} else {
+  print("Table: Open Materials")
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+```{r}
+# rename published_year prop prop_low prop_upp variable
+tbl_osp_prev_overall_dsadj_d <- tbl_osp_prev_overall_dsadj %>% 
+  select(published_year, prop, prop_low, prop_upp, variable) %>%
+  filter(variable == "Open Access") %>%
+  select(-variable) %>%
+  mutate(
+    prop = percent(prop, accuracy = 0.1),
+    prop_low = percent(prop_low, accuracy = 0.1),
+    prop_upp = percent(prop_upp, accuracy = 0.1),
+  ) %>%
+  rename(
+    `Year` = published_year,
+    `Proportion` = prop,
+    `.95 CI (Lower)` = prop_low,
+    `.95 CI (Upper)` = prop_upp
+  ) %>%
+  kable(digits = 2, row.names = FALSE, booktabs = TRUE, caption = "Open Access") %>%
+  kable_styling(position = "center", full_width = FALSE)
+
+if(output_format == "pdf/tex") {
+  tbl_osp_prev_overall_dsadj_d
+} else {
+  print("Table: Open Access")
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```

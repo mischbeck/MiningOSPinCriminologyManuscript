@@ -1,0 +1,1339 @@
+---
+title: "Mining Transparency: Assessing Open Science Practices in Crime Research Over Time Using Machine Learning"
+top-level-division: section 
+prefer-html: true
+execute:
+  freeze: auto
+
+abstract: |
+  This pilot study addresses the current lack of systematic, large-scale evidence on open science practices (OSPs) adoption in criminology and legal psychology. A scalable, machine-learning-based text classification pipeline is introduced to map the prevalence of Open Access (OA), Open Data (OD), Open Materials (OM), and Preregistration (PR). The analysis is based on publication metadata and a year-stratified sample of full texts from the top 100 journals in Criminology & Penology, Law, and Psychology (2013-2023). After identifying articles containing statistical inference (SI) via a high-performing classifier, the author utilized GPT-assisted coding and supervised learning to train specific classifiers for OD, OM, and PR. OA was classified using publicly available metadata. Among 1,763 SI articles with usable full text, design-based estimates reveal a significant disparity in OSP adoption. OA is relatively common (40.9%, 95% CI: 38.8-43.1) and has steadily increased from approximately 20% in 2013 to 50% in 2023. By sharp contrast, trends for OD, OM, and PR cannot be reliably quantified. Extreme class imbalance and the minimal number of positive cases indicate a very low underlying true prevalence for these practices in the assessed field. Methodologically, the study confirms that GPT-assisted coding supports accurate SI detection, but robust prevalence estimation for extremely low-frequency OSPs remains challenging for downstream classifiers. Overall, this project establishes a transparent and reproducible pipeline and provides critical baseline estimates for future, larger-scale assessments of research transparency in crime-related fields.
+---
+
+```{=latex}
+\pagestyle{empty}
+\newpage
+\pagenumbering{arabic}
+\pagestyle{headings}
+\onehalfspacing   % 1.5 line spacing from here on
+```
+
+```{r}
+#| label: setup
+#| include: false
+source("deps.R")
+dir.create(dir_output_plots, recursive = TRUE, showWarnings = FALSE)
+
+# uncomment the following line to disable graphs & tables
+#output_format <- ""
+
+debug_mode <- FALSE
+```
+
+\newpage
+
+# Introduction
+
+When evidence makes headlines, influences public opinions, shapes policing, sentencing or rehabilitation, it touches lives. But over the last decades, social scientists have learned how easily impressive results evaporate. Criminology is not insulated by these pressures. In this paper, open science practices (OSPs) in criminology and legal psychology are monitored to assess if the field is wired to catch errors before they might become policy.
+
+> "Only by [...] repetitions can we convince ourselves that we are not dealing with a mere isolated 'coincidence', but with events which, on account of their regularity and reproducibility, are in principle inter-subjectively testable." [@popperLogicScientificDiscovery2005, p. 23]
+
+To challenge bias and to support replication of research, a movement has formed within the scientific community, fueled by the "replication crisis" that was especially prevalent within the field of psychology [@dienlinAgendaOpenScience2021]. The open science movement tries to establish OSPs to challenge many of the known biases that endanger the reliability of the scientific process and enable access to scientific discourse for a broader public [@banksAnswers18Questions2019]. The ongoing debate of the last decades was especially focused on two OSPs: 
+
+*First*, openly sharing materials, data and code enables reproduction and replication, reduces p-hacking, surfaces errors, spreads methodological knowledge and might reduce burdens on the researcher, driving broader adoption across science [@freeseAdvancesTransparencyReproducibility2022; @freeseReplicationStandardsQuantitative2007; @finkReplicationCodeAvailability2024]. *Second*, preregistration (PR) involves thoroughly outlining and documenting research plans and their rationale in a repository before conducting the research, reducing deliberate or unconscious decisions taken to improve findings, challenging publication bias and other biases [@managoPreregistrationRegisteredReports2023; @hardwickeReducingBiasIncreasing2023; @mertensPreregistrationAnalysesPreexisting2019]. 
+
+The initial plan for this work was to study the proposed effects of OSPs on reported effect sizes in published papers. During the first literature review, it appeared to me that there were only few publications that used PR in data-driven Criminology and Legal Psychology. Instead of assessing effect sizes, this raised the question of how OSPs have been adopted within criminology at all. Motivated by the expected positive impact of OSPs, this work studies the use of OSPs in the field. 
+
+@scogginsMeasuringTransparencySocial2024 did an extensive analysis of nearly 100,000 publications in political science as well as international relations and observed an increasing use of OSPs, with levels still being relatively low. Their extensive research not only revealed the current state of open science in political science but also generated rich data to perform further meta research. Inspired by their work, this work adopts their research questions to assess OSPs in the fields of criminology and legal psychology:
+
+> $RQ_1$: What proportion of papers that rely on statistical inference make their data and code public?
+
+> $RQ_2$: What proportion of statistical inference publications were preregistered?
+
+This work gathers data about papers in a subset of Criminology and Legal Psychology journals, categorizes those papers by application of OSPs using machine learning methods and explores the patterns over time. The methods will replicate and try to improve the approaches taken by @scogginsMeasuringTransparencySocial2024. Alongside the two research questions, the share of openly accessible publications is reported as a secondary, descriptive analysis. While open access addresses a broader aspect of transparency, it is tracked alongside these practices and provides additional context for the overall trend in open-science adoption. The research will contribute to the ongoing discussion about the use of OSPs by painting a clearer picture of their adoption in the field. The improved approach will serve as a starting point for a more extensive exploration of OSPs in criminology and legal psychology and will contribute to the growing literature of machine learning and LLMs in classification tasks of scientific literature.
+
+But first, a closer look at the underlying issues leading to the recent development of the open science movement will be taken to gain a deeper understanding of its context, the intended goals, implemented methods and their expected impact on the ever-progressing scientific discourse.
+
+# Background
+
+In his widely reviewed standard reading "Seven rules for social research", @4ff8afa9-5c92-3c50-b832-a1756ccbeedc emphasizes the importance of the replication of research findings. But already in the title of the chapter or the rule itself, Firebaugh cuts back on his appeal: "replicate *where possible*". He notes increasing data availability, yet acknowledges challenges for true replication. Given the books' influence since 2008, one might expect replication and replication-enabling practices to be widely adopted today. But is this the case?
+
+Besides the theoretically driven discourse, there are quite tangible reasons to talk about the scientific method, replication and the publication process. Analyzing 77 research teams assessing the same dataset for a single hypothesis, @breznauObservingManyResearchers2022 found extremely diverse results, ranging from strong positive to strong negative outcomes. @simmonsFalsePositivePsychologyUndisclosed2011 first termed this phenomenon "researcher degrees of freedom" (RDOF), explaining that most of the variance in results was not explained by assigned conditions, research decisions, or researcher characteristics. Instead, RDOF accounted for more than 90% of the variance [@breznauObservingManyResearchers2022].
+
+This raises the question: if modern research practices are so prone to bias and error, what steps can be taken to mitigate these issues? A closer look at an ongoing debate resulting from cases around replication failures helps shed light on the whole complex, its implications and today's research culture.
+
+## From Replication Crisis to Credibility Revolution? {#sec-replication-crisis}
+
+The publication of Firebaugh's text coincided with the onset of the replication crisis, a period where widespread failures to *replicate* - that is, to obtain consistent results when re-running a study with new data - revealed systemic issues in research culture. This is distinct from computational *reproducibility*, the narrower question of whether a given analysis can be re-executed on the same data. Both matter for open science, but the crisis is primarily about the former [@freeseReplicationSocialScience2017; @munafoManifestoReproducibleScience2017].
+
+This crisis wasn't limited to a few fraudulent cases but exposed a broader problem where seemingly robust, highly cited studies could not be replicated. Examples ranged from unintended to outright data fabrication [@barghAutomaticitySocialBehavior1996; @callawayReportFindsMassive2011; @crockerRoadFraudStarts2011a]. While the crisis began in psychology, it soon spread to other fields like in political science and economics [@breznauDoesSociologyNeed2021]. For instance, a classic social priming study by @barghAutomaticitySocialBehavior1996, finding that participants primed with an "elderly" stereotype walked more slowly, failed to replicate. A follow-up study suggested that the original results were likely influenced by experimenter expectations rather than the hypothesized mechanism of unconscious priming [@doyenBehavioralPrimingIts2012]. While some extreme cases are well-documented, the crisis is largely seen as a result of systemic pressure - such as institutional incentives to "publish or perish", described later - and normal human behavior or misconduct rather than serious intent [@diekmannII2Probleme2022; @crockerRoadFraudStarts2011a; @4ff8afa9-5c92-3c50-b832-a1756ccbeedc].
+
+The term crisis not only implies alarmingly high proportions but also creates pressure to act. This is supported by findings spanning many fields: Social-psychology [@callawayReportFindsMassive2011],  finance [@jensenThereReplicationCrisis2023], economics [@briggsPartialSolutionReplication2023], sociology [@auspurgAusmassUndRisikofaktoren2014] or even medicine [@begleyRaiseStandardsPreclinical2012], with some authors even claiming that most published research findings in the social sciences are false [@ioannidisWhyMostPublished2005]. Criminology sits at the intersections of these literatures rather than apart from them, which is why we draw on evidence from across the social sciences in what follows. But what drives this crisis?
+
+## Questionable Research
+
+One of the earlier discussed practices that distort scientific progress is called publication bias. @rosenthalFileDrawerProblem1979 defines it as the preference for publishing positive over negative or inconclusive results. This, often institutionally driven bias, also called the 'file drawer problem', can occur at any stage in research [@kuhbergerPublicationBiasPsychology2014; @francoPublicationBiasSocial2014]. Contributing practices include selective reporting, where null findings or variables are omitted from analysis [@breznauDoesSociologyNeed2021] and the post-hoc adaptation of hypotheses [@gerberPublicationBiasEmpirical2008]. But @breznauObservingManyResearchers2022 don't see publication bias as the main driver of the huge variance in results. Instead, they emphasize the role of RDOF and the broader context of research practices leads to the problem of science practices that might produce unreliable or invalid results: so-called questionable research practices (QRP). 
+
+In their excellent manifesto for reproducible science, @munafoManifestoReproducibleScience2017 conceptionalize QRPs along the typical stages of empirical research. Common QRPs include HARKing or presenting an unexpected exploratory finding as a preplanned hypothesis, p-hacking or manipulating data or analysis to achieve a desired p-value and selective reporting, that is not reporting studies or variables that lack significant results. Other QRPs involve undisclosed data exclusion, stopping data collection when a desired result is found, or not reporting all conditions or measures used. These practices inflate false-positive rates and undermine research credibility [@auspurgAusmassUndRisikofaktoren2014; @breznauDoesSociologyNeed2021; @chinQuestionableResearchPractices2023].
+
+Problematic practices involve the misuse of p-values, where researchers simply misinterpret the significance level as the likelihood of truth in their findings, leading to vast overconfidence in their results-that can also be a consequence of or lead to a failure to control for bias and poor quality control [@breznauDoesSociologyNeed2021; @munafoManifestoReproducibleScience2017]. Demographic, geographic or political biases and peer review limitations are more sources for error [@breznauDoesSociologyNeed2021; @grossmannOpenScienceReform2021]. Additionally, gendered penalties favor men publishing disproportionately more than women [@akbaritabarGenderPatternsPublication2021]. Misaligned institutional incentives, also accelerated by an intense competition for academic jobs, tenure and funding, lead to a so-called publish or perish culture [@smaldinoOpenScienceModified2019; @breznauDoesSociologyNeed2021]. 
+
+A truth-incentivizing survey of over 2000 psychologists revealed a high prevalence of QRPs. Roughly 60% admitted to not reporting all dependent measures, 50% to selective reporting, and 30% to falsely claiming they predicted an unexpected finding. About 2% even confessed to data falsification [@johnMeasuringPrevalenceQuestionable2012a]. A comparable study in Criminology  by  @chinQuestionableResearchPractices2023 recorded remarkably lower rates of admission, but this likely reflects methodological rather than substantive differences: the design lacked the truth-incentivizing mechanisms used by @johnMeasuringPrevalenceQuestionable2012a. Additionally, given the sensitivity of the topic and the probable underrepresentation of QRP-engaging researchers in voluntary surveys, both sets are best read as lower bounds on true prevalence.
+
+All the above leads to the conclusion that our institutions make refutation harder than confirmation. Open science (OS) is the design response, resetting defaults to transparency, pre-specification, and reproducibility. @munafoManifestoReproducibleScience2017 translate that philosophy into a lifecycle blueprint: blinding and PR, stronger methods training and independent oversight, open data, code and diversified peer review to harden reproducibility, evaluation and other measures. The central movement to address the above issues is the OS movement, devoting its effort to challenge publication bias, low statistical power, p-hacking, HARKing and other problems by increasing reproducibility and transparency [@grossmannOpenScienceReform2021]. 
+
+## Open Science Practices
+
+Following an extensive literature review, @vicente-saezOpenScienceNow2018a characterize OS using four differentias: transparency in communication, accessibility or searchability to all data and materials, sharing of everything with a commitment to do so and collaboration along a scientific, distributed global dialogue throughout all stages involved in science. They integrate these into a succinct definition: "Open Science is transparent and accessible knowledge that is shared and developed through collaborative networks" [@vicente-saezOpenScienceNow2018a, p. 434]. @banksAnswers18Questions2019 establish a broader definition of OS that refers to many concepts, including scientific philosophies embodying communality and universalism, specific practices operationalizing these norms including OS policies. A common ground is that *open* science and OSPs try to prevent research misconduct by simply increasing research transparency.
+
+Building on these definitions, in line with the work of many other authors from diverse disciplines @greenspanOpenSciencePractices2024, there are numerous practices that have been proposed to enact OS.
+
+### Open Data and Open Materials
+
+*Open data* and *open materials* enable computational reproduction and, where new data are collected, replication, by publishing all materials necessary to reproduce research in detail, finding errors, bias or simply supporting the results of the reproduced work [@dienlinAgendaOpenScience2021]. 
+
+**Open data** (OD) is defined as *the sharing of data that was collected, generated or obtained from a third party and processed to investigate the research question assessed in the publication*. Open materials are often shared alongside open data. To delineate a differentiated picture as sharing behavior for data and materials can be expected to differ due to for example privacy concerns, **open materials** (OM) are distinctively defined as *all research materials necessary to reproduce the reported results like notebooks, code or syntax, guides, protocols that can be shared digitally*. Both definitions closely follow the definitions given by the @americanpsychologicalassociationOpenScienceBadges. OD and OM are supported by a growing body of evidence that suggests they can improve the quality and impact of research.
+
+First, research increasingly confirms that providing data alongside publications increases visibility and impact. Some estimates suggest around a 30% citation increase for papers that share data, and importantly, this advantage appears at least partly independent of journal impact factor (JIF) [@tennantAcademicEconomicSocietal2016; @banksAnswers18Questions2019]. Beyond citations, openly available datasets enable exploration by others, supporting novel findings and exploratory, hypothesis-generating work [@piwowarSharingDetailedResearch2007; @piwowarStateOALargescale2018].
+
+Second, openness improves methodological rigor and documentation. Knowing that others will inspect our code, data, and decisions incentivizes clearer documentation, more careful workflows, and fewer statistical errors in final papers [@tennantAcademicEconomicSocietal2016; @banksAnswers18Questions2019]. This also promotes transparency about analytic choices and potential biases [@breznauDoesSociologyNeed2021].
+
+Third, OD and OM reinforce field credibility. By allowing independent examination of methods and results, openness reduces the chance that findings are based on idiosyncratic decisions or unreported RDOF [@scogginsMeasuringTransparencySocial2024; @breznauObservingManyResearchers2022]. Multiple sources suggest that open practices reduce QRPs overall [@scogginsMeasuringTransparencySocial2024; @tennantAcademicEconomicSocietal2016; @munafoManifestoReproducibleScience2017]. 
+
+Finally, both have economic and societal benefits, that are even more evident for open access (OA). They discourage redundant data collection, enabling cost savings that can be redirected to new research questions [@tennantAcademicEconomicSocietal2016; @piwowarSharingDetailedResearch2007]. At the same time, the public availability of data stimulates methodological innovation and cross-dataset syntheses that would otherwise remain infeasible [@piwowarStateOALargescale2018]. These dynamics amplify the academic, economic, and societal impact of research [@tennantAcademicEconomicSocietal2016]. 
+
+Despite these gains, legitimate concerns persist among many researchers. With increasingly powerful linkage and inference techniques, even 'anonymized' datasets can risk re-identification if insufficient safeguards are in place. Researchers may fear that openness exposes flaws, invites reputational harm, or enables misuse - but detecting and correcting errors is core to good scientific practice and should be actively encouraged [@banksAnswers18Questions2019]. A major practical barrier is time and effort. Preparing shareable assets such as de-identifying data, curating metadata and documented code, can be complex and resource-intensive [@loggPreregistrationWeighingCosts2021; @sarafoglouSurveyHowPreregistration2022]. While many researchers see challenges in the publication of their data and materials, many of these concerns could be ruled out by streamlined processes or institutional support [@freeseAdvancesTransparencyReproducibility2022; @freeseReplicationStandardsQuantitative2007; @americanpsychologicalassociationOpenScienceBadges]. 
+
+There are also method-specific hurdles. For qualitative research, transparency can be especially challenging when meaning-making is relational and context-dependent. Fieldnotes and transcripts may lose essential value once separated from the researcher and participants [@breznauDoesSociologyNeed2021; @freeseReplicationSocialScience2017]. These issues underscore that one-size-fits-all mandates are unlikely to succeed.
+
+In short, many systemic and researcher-centric challenges cut across OSPs - and they will reappear in the discussion of PR that follows.
+
+### Preregistration
+
+A PR is a time-stamped plan for a study's hypotheses, design, and analysis, often made public. Its contents vary by method (e.g., hypotheses, sampling, interview guides, exclusion rules, analysis plans) [@loggPreregistrationWeighingCosts2021; @managoPreregistrationRegisteredReports2023; @americanpsychologicalassociationOpenScienceBadges].
+
+Timestamping restrains HARKing by separating predictions from evidence, reducing the flexibility for post-hoc theorizing [@scogginsMeasuringTransparencySocial2024; @loggPreregistrationWeighingCosts2021]. More broadly, by committing ex ante, RDOF are narrowed. The analytic and design choices that otherwise enable selective reporting or specification searching are constrained, and any deviations become visible to readers and reviewers. The same logic limits p-hacking: when transformations, outlier rules, model families, covariates, and confirmatory contrasts are specified in advance, cherry-picking becomes less feasible because analytical decisions are made independently of the data. PR also addresses structural issues of study quality. Declaring sample-size requirements upfront helps prevent underpowered designs at construction [@kuhbergerPublicationBiasPsychology2014; @grossmannOpenScienceReform2021]. We predefine theory, measures, and analyses, seek early input, and document choices so reviewers can vet them and avoid misinterpretation-strengthening credibility [@evansImprovingEvidencebasedPractice2023; @sarafoglouSurveyHowPreregistration2022; @scogginsMeasuringTransparencySocial2024]. PR helps separate confirmatory from exploratory work, reduces publication bias (e.g., via Registered Reports), and narrows RDOF [@simmonsFalsePositivePsychologyUndisclosed2011].
+
+For this work, **PR** is defined as *the act of planning and documenting the hypotheses, study design, and analysis plan of a study before data is collected or even viewed. The documentation is typically time-stamped and made publicly available*.
+
+The Open Science movement, particularly PR, has been criticized for not providing tailored transparency practices for qualitative research and for importing a positivist framework that may not fit all traditions [@breznauDoesSociologyNeed2021]. Nevertheless, the core principle of transparency remains relevant: qualitative reports should contain enough information for another researcher to understand the logic and process behind the findings [@breznauDoesSociologyNeed2021]. In qualitative contexts, PR can focus on documenting guiding questions, sampling logic, coding frameworks, and decision trails while remaining compatible with iterative analysis.
+
+Frequently voiced concerns are about increasing work, thereby lengthening projects and restricting researchers' freedom by confining them to their predefined plan. However, preplanning simply reorders the workflow rather than creating extra work, potentially preventing costly redesigns or follow-up studies. Additionally, this does not inhibit exploratory work as the goal is to provide clarity and transparency by distinguishing between preplanned analysis and those conducted after viewing the data. By moving the conceptual work upstream, PR clarifies claims, adds transparency to the decision process and strengthens credibility by marking plans and deviations [@loggPreregistrationWeighingCosts2021; @evansImprovingEvidencebasedPractice2023]. In-principle acceptance adds a guarantee to the upfront work, provided the approved plan is followed [@sarafoglouSurveyHowPreregistration2022; @banksAnswers18Questions2019].
+
+In summary, PR does not constrain scientific creativity, it clarifies claims. By making the sequence of decisions explicit-what was planned, what changed, and why-we reduce bias, improve interpretability, and strengthen confidence in reported findings [@hardwickeReducingBiasIncreasing2023].
+
+### Open Access {#sec-open-access}
+
+OA is a key OSP, defined as making research freely available online to anyone, as opposed to requiring payment via journal subscriptions [@banksAnswers18Questions2019; @breznauDoesSociologyNeed2021]. The Budapest OA Initiative defines OA as being free to read and reuse for lawful purposes, including text and data mining [@BOAI2002]. A simpler, broad definition is the lawful free availability of a research publication on the internet which will be used here.
+
+OA publishing offers several benefits. It increases accessibility and equity, as anyone with an internet connection can reach an OA article, potentially reducing inequalities for those at underfunded institutions [@banksAnswers18Questions2019]. There is a significant OA citation advantage, as OA articles are cited more frequently than closed-access publications. This preference is now considered a form of research bias known as "FUTON" (full text on the net) bias [@piwowarStateOALargescale2018; @wentzVisibilityResearchFUTON2002; @piwowarSharingDetailedResearch2007]. OA also improves research quality by reducing the suppression of null findings [@francoPublicationBiasSocial2014] and enabling large-scale text and data mining [@tennantAcademicEconomicSocietal2016]. Furthermore, it accelerates equitable access, helping to bridge the global North-South divide, and enhances public accountability for publicly funded research [@tennantAcademicEconomicSocietal2016].
+
+Despite its benefits, OA faces challenges. Some newer or smaller Gold OA journals are perceived as less prestigious [@piwowarStateOALargescale2018], and concerns about "predatory publishers" have been mistakenly linked with OA [@tennantAcademicEconomicSocietal2016]. Article processing charges (APCs) can be a barrier for authors, particularly in low- and middle-income countries [@banksAnswers18Questions2019; @breznauDoesSociologyNeed2021], though roughly 70% of peer-reviewed OA journals are fee-free, and many offer waivers [@tennantAcademicEconomicSocietal2016; @breznauDoesSociologyNeed2021]. Publishers may also be hesitant to adopt OA due to concerns about losing subscription revenue. While OA promotes transparency, it cannot solve issues like QRPs or underpowered studies on its own, if incentives continue to reward quantity over quality [@grossmannOpenScienceReform2021; @banksAnswers18Questions2019].
+
+## Open Science in Criminology and Legal Psychology {#sec-osp-in-crim}
+
+A focused literature review on adoption produced limited evidence as we still know surprisingly little about how often OSPs are actually used in criminology and legal psychology. The evidence is fragmented, method-dependent, and sometimes contradictory - so estimates of prevalence are shaky, even as enthusiasm for OSPs is high and QRPs  might appear common.
+
+Self-reports suggest high OSP familiarity - but they co-exist with widespread QRPs and are vulnerable to bias. In the study conducted by @chinQuestionableResearchPractices2023, 89% of respondents said they had used at least one OSP, yet 87% also admitted at least one QRP, and some serious QRPs (e.g., hiding known problems) were non-trivial. Survey data indicate that about 25% of researchers across fields have preregistered a study, with higher uptake in psychology (50-60%) and lower prevalence in sociology (~30%) [@fergusonSurveyOpenScience2023a]. Another survey in the field similarly estimated PR use at 45% (42-49%) [@chinQuestionableResearchPractices2023]. The reported prevalence of OD varies widely across disciplines. Survey data suggest that more than 60% of researchers report having posted data or code, with higher rates in psychology (>50%) compared to sociology (~35%) [@fergusonSurveyOpenScience2023a]. The prevalence of OM sharing is more limited compared to OD and access. Survey results indicate that 43% (40-47%) of researchers report providing access to their research materials [@chinQuestionableResearchPractices2023]. Few or no journals require data sharing in the field, coupled with rare PR and a tiny share of replication studies [@pridemoreReplicationCriminologySocial2018].
+
+In their survey at the Netherlands Institute for the Study of Crime and Law Enforcement, @moneva2025attitudes find broadly positive attitudes but divergent views by method and career stage, and a long list of cultural, structural, legal/privacy, and cost barriers. @fessingerStateOpenScience2025 also shows strong approval (88% positive) and some experience (58% tried at least one OSP), but routine adoption looks limited (only 44% even hold a repository account). In contrast, an assessment of social science studies between 2014 and 2017 found no preregistered studies at all [@hardwickeEmpiricalAssessmentTransparency2020]. 
+
+Article audits show far lower OSP uptake than surveys, implying either nondisclosure or overestimation. @greenspanOpenSciencePractices2024 coded 722 articles (2018-2022) across five leading journals and found OM in about a third of papers, but \<10% with OD, \<2% with open code or PR, and no upward trend.
+
+Put together, we have: (a) structural signals that transparency norms aren't yet embedded, (b) surveys that likely overstate or at least poorly calibrate actual practice, (c) parallel evidence from legal psychology that approval is high but practical barriers keep routine use patchy and (d) little to no evidence of actual OS practice, opposed to plain opinion. The applied nature of the research in this field means that fragile findings can drive high-stakes policy and practice. Single studies, like the Minnesota Domestic Violence study by @shermanSpecificDeterrentEffects1984, have shaped policing responses only to be refuted by later replications, emphasizing the risks of acting on unverified results [@mcneeleyReplicationCriminologyNecessary2015]. The relative youth of criminology and incentives that privilege novelty further increase the need for systematic replication. To enable it, we should adopt measures [@mcneeleyReplicationCriminologyNecessary2015]. Given how little is known about the prevalence of OSPs in the field and the indicators we see for widespread QRPs, there is a strong case for prioritizing replication - and thereby a need to take stock. 
+
+# Data and Method
+
+The aim of this work is to compile a sample of publications in the fields of criminology and legal psychology, classify it as either statistical inference (SI) publications or non-SI publications and further examine the former to assess whether any of the OSPs under consideration are used: PR, OD, OM, or OA. OA results are reported as secondary, descriptive analyses to benchmark open-science adoption. The full research process is illustrated in @fig-flowchart-pipeline. The presented OSPs will be operationalized and a text-classification pipeline (keyword dictionaries and machine-learning models) will be used to detect them. OA status will be determined using publicly available metadata, given the expected high reliability of information on OA. The fine-tuned models are validated against a hand-coded sample that is extended using a large-language-model (LLM, ChatGPT 4o & ChatGPT 5o), with the product of both being then used to train classifier models that will classifiy the analytical sample to estimate true prevalences of OSPs. Machine learning models learn patterns from a training set, a labeled subset of articles and are then tested on a validation set, a separate labeled subset withheld during training, to assess whether the learned patterns generalize rather than merely memorize the training examples [@robertsCrossvalidationStrategiesData2017]. A thorough description or discussion of the methods, including the sampling procedure, data collection, and classification pipeline is provided in the methodological report. The following sections provide a summary of the key aspects of the methods.
+
+Full-text data for training the machine learning classification models will be collected with a web application developed specifically for this project. Since software development is not the focus of this work, details of the app's architecture will not be discussed here. A brief description of the application, along with screenshots, is provided in the supplementary material.
+
+This work is necessarily scoped by time and resources. It shall therefore be treated as a pilot that establishes data, measures and a reproducible, yet improvable pipeline to be extended into a fully exhaustive study. Where necessary, potential improvements that could not be implemented are recommended.
+
+## Population
+
+The scope of this work encompasses all publications from the top 100 journals classified under "Criminology & Penology", the journals that are categorized as "Law" and "Psychology, Multidisciplinary", ranked by the 2023 JIF according to Clarivate's Journal Citation Reports (JCR) [@clarivateJournalImpactFactor2023] that rely on SI. Law journals were included because Clarivate's "Law" category contains a substantial body of legal psychology research relevant to our scope as for example shown in the analyses of journals by @gonzalez-salaCaracterizacionPsicologiaJuridica2017. Publication metadata were retrieved via the Crossref API. While Crossref provides extensive coverage, it is not exhaustive, and prior work has shown that missing records are often systematic rather than random [@delgado-quirosWhyAreThese2024; @hausteinWhenArticleActually2015]. Using multiple bibliographic sources (e.g., Scopus, Web of Science) would reduce this bias [@gerasimovComparisonDatasetsCitation2024; @delgado-quirosWhyAreThese2024], but this was not feasible within the scope of this pilot. Consequently, the study population is restricted to articles indexed in Crossref from the selected top 100 journals.
+
+As the population is restricted to publications that make SIs, this concept has to be clearly defined mostly in line with @scogginsMeasuringTransparencySocial2024, as works that rely on data, statistical analysis and experiments. @scogginsMeasuringTransparencySocial2024 restricted further on only experiments, which was deemed not necessary as all assessed OSPs are suitable to be used and should be used in not only experiments, but also in works assessing second-hand data or alike [@akkerPreregistrationSecondaryData2021; @westonRecommendationsIncreasingTransparency2019]. Thereby, descriptive, correlational, comparative and other non-purely theoretical research was included. 
+
+Temporally, this study adopts a starting point of 2013-01-01. The endpoint is set at 2023-12-31, consistent with the initial planning of this work, as the year 2024 had not yet come to an end.
+
+In summary, the study targets all statistical-inference publications published between 2013 and 2023 in the top 100 JIF-ranked criminology and legal psychology journals (as of 2023), indexed in Crossref.
+
+## Sampling {#sec-sampling}
+
+The sampling procedure involved drawing a large enough sample for the training using sequential sampling, in this specific context called active learning [@chickSequentialSamplingEconomics2012]. Faced with expected challenges in full-text acquisition, a rather demanding training pipeline, and unexpectedly low anticipated OSP prevalence, the sequential sampling approach was abandoned, and an alternative approach was established.
+
+The sample size was determined by a precision-based calculation to ensure a $\pm$ 1.5 percentage point confidence interval for the SI prevalence as a precision-based sample size calculation was deemed more suitable for an exploratory prevalence study [@blandTyrannyPowerThere2009]. Calculations were based on prevalences arbitrarily estimated using the results of the literature review described in @sec-osp-in-crim, explained further in the provided report. A minimum calculated total sample size equaled $\approx$ 4,265 publications to achieve a 95% confidence interval with a half-width of $\pm$ 1.5 pp using the @agrestiApproximateBetterExact1998 method.
+
+```{mermaid}
+%%| label: fig-flowchart-pipeline
+%%| fig-cap: "A flowchart of the full research process. All steps described are further explained in the methodological report and the supplements."
+%%| fig-width: 4.2
+%%| fig-height: 8
+flowchart TD
+    A["Population
+    Top 100 JIF journals 2013-2023"]
+
+    B["Crossref 
+Metadata filtering
+95,042 → 40,860 publications
+Deduplication, date filter, keyword exclusions"]
+
+    C["Precision-based stratified sampling
+Target ±1.5 pp · n ≈ 4,265"]
+
+    D["Sample A
+n = 408, unstratified
+SI classifier training only"]
+
+    E["Sample B
+analytical sample
+n = 4,265, stratified by year"]
+
+    F["Manual + LLM labelling
+Subset of Sample A
+κ ≈ .83 after reconciliation"]
+
+    G["SI classifier trained
+Random Forest / XGBoost
+TF-IDF keyword features"]
+
+    H1["Full-text retrieval
+HTML / PDF, scraped"]
+ 
+    H2["Full-text retrieval
+HTML / PDF, scraped"]
+
+    I["SI classifier applied to Sample B"]
+
+    I2["SI papers identification
+n = 1,763 with usable full text"]
+
+    OA["OA classified from metadata
+using Crossref, Web of Science, Scopus"]
+
+    J["OSP training subset
+n = 352, from SI papers in Sample B
+manual & LLM labelling"]
+
+    KOD["OD classifier
+RF / XGBoost"]
+
+    KOM["OM classifier
+RF / XGBoost"]
+
+    KPR["PR classifier
+RF / XGBoost"]
+
+    L["Prevalence estimates, Post-stratified by year, adjusted for misclassification"]
+
+
+
+A --> B
+B -- Training/Testing Sample --> D
+B -- Analytical Sample --> C
+D --> H1 --> F --> G
+C --> E --> H2 --> I
+G --> I
+E -- OA from metadata --> OA
+I --> I2 --> J
+J --> KOD & KOM & KPR
+KOD & KOM & KPR -- Applied to all SI papers --> L
+OA --> L
+J --> L
+L ~~~ invisible[ ]
+    style invisible fill:none,stroke:none,color:none
+```
+
+First, Sample A, a random sample of up around 500 publications, was manually classified to train the initial SI classifier. This step also helped estimate the effort for subsequent tasks. Next, an independent Sample B was drawn, stratified by year, thereby addressing problems in cross-validation (resampling of the sample to multiple smaller training and validation subsets) and the non-independence of residuals assumptions of many machine-learning models [@robertsCrossvalidationStrategiesData2017]. 
+
+The SI classifier was then used to analyze and classify all publications in Sample B. From the identified SI papers in Sample B, a balanced dataset was randomly sampled to create a training set for the OSP classifiers. Finally, these trained OSP classifiers were applied to the entire analytical Sample B. While a publisher or journal-based stratification for the full sample would have been ideal, it was not feasible due to the limited number of available full texts.
+
+## Data Collection {#sec-data-fulltext-collection}
+
+### Metadata
+
+Before the full text data could be collected, some steps were necessary to gather metadata of all publications from all journals within the given time interval. The first step of the data collection process consisted of a simple download of journal level data from all journals in the field categories "CRIMINOLOGY", "LAW" and "PSYCHOLOGY, MULTIDISCIPLINARY" from Clarivate[^7]. This data was combined and the 100 highest rating journals according to the 2023 JIF were extracted. The resulting list of journals was used to fetch publication level data from the crossref API using the issn or, if not available, the E-ISSN.  
+
+```{r}
+#| echo: false
+#| results: asis
+#| tbl-cap: Cases Dropped from all Publications Obtained
+#| label: tbl-01-cases
+
+tbl <- read_csv("data/tbl-sample-case-drops.csv")
+
+tbl_cases <- tbl %>%
+  rename(
+    step_id      = `...1`,
+    step_code    = step,
+    n_before     = before,
+    n_after      = after,
+    n_dropped    = dropped,
+    filter_logic = logic
+  ) %>%
+  mutate(
+    step_label = case_when(
+      step_code == "deduplicate" ~ "Deduplicate by DOI",
+      str_detect(step_code, "^NA\\s+published_date$") ~ "Keep: rows with a published date (drop NAs)",
+      str_detect(step_code, "published_date\\s*>\\s*date_from") ~ "Keep: published date after start date",
+      str_detect(step_code, "published_date\\s*<\\s*date_to")   ~ "Keep: published date before end date",
+      step_code == "filter_reviews_simple"  ~ "Keywords: simple reviews",
+      step_code == "filter_corrections"     ~ "Keywords: corrections / errata",
+      step_code == "filter_front_back"      ~ "Keywords: front/back matter",
+      step_code == "filter_announcements"   ~ "Keywords: announcements",
+      step_code == "filter_reviews_full"    ~ "Keywords: full reviews",
+      step_code == "filter_other"    ~ "Keywords: other",
+      TRUE ~ str_replace_all(step_code, "_", " ")
+    ),
+    step_id = as.integer(step_id)
+  ) %>%
+  arrange(step_id) %>%
+  select(step_id, step_label, n_before, n_after, n_dropped)
+
+if(output_format == "pdf/tex") {
+  tbl_cases %>%
+  kable(
+    format   = "latex", # force LaTeX output (not markdown)
+    booktabs = TRUE,
+    longtable = FALSE, # avoid longtable entirely
+    col.names = c("Step #", "Description", "Before", "After", "Dropped"))
+} else if(output_format == "docx") {
+  tbl_cases %>% 
+    flextable() %>%
+      set_table_properties(width = 1) %>%
+      theme_booktabs(bold_header = TRUE) %>%
+      align(align = "center", part = "all") %>%
+      fontsize(size = 11, part = "header") %>%
+      fontsize(size = 10, part = "body") %>%
+      set_header_labels(
+        step_id = "Step #",
+        step_label = "Step",
+        n_before = "Before",
+        n_after = "After",
+        n_dropped = "Dropped"
+      ) %>%
+      width(2, 8.5, unit = "cm") %>%
+      width(5, 2.34, unit = "cm") %>%
+      autofit()
+} else {
+
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+The data obtained necessitated multiple transformations. All transformations are reported in the respective sections in the methodological report as stated in the data availability statement. Publications were filtered by the resulting date variable to limit the population to the defined time interval. To reduce manual SI coding efforts, simple keyword-lists were used to reduce the number of publications by matching titles. Missing values were assessed and language filters were processed. @tbl-01-cases shows that from an initial number of 95,042 publications, all steps resulted in a final publication count of 40,860.
+
+```{r}
+#| label: tbl-02-cases2
+#| tbl-cap: Cases Dropped from Analytical Sample
+tbl2 <- read_csv("data/tbl-sample-case-drops-stattraining-final.csv")
+tbl_cases2 <- tbl2 %>%
+  rename(
+    step_id      = `...1`,
+    step_code    = step,
+    n_before     = before,
+    n_after      = after,
+    n_dropped    = dropped,
+    filter_logic = logic
+  ) %>%
+  mutate(
+    step_label = case_when(
+      step_code == "status == \"Done\"" ~ "Only Successfully Downloaded",
+      step_code == "nchar(fulltext) > 1000"  ~ "Filter out texts < 1000 Words",
+      step_code == "is_statistical == \"Yes\""     ~ "Drop non-statistical papers"
+    ),
+    step_id = as.integer(step_id)
+  ) %>%
+  arrange(step_id) %>%
+  select(step_id, step_label, n_before, n_after, n_dropped)
+
+if(output_format == "pdf/tex") {
+  tbl_cases2 %>%
+    kable(
+      format   = "latex", # force LaTeX output (not markdown)
+      booktabs = TRUE,
+      longtable = FALSE, # avoid longtable entirely
+      col.names = c("Step #", "Step", "Before", "After", "Dropped")
+      )
+} else if(output_format == "docx") {
+  tbl_cases2 %>% 
+    flextable() %>%
+      set_table_properties(width = 1) %>%
+      theme_booktabs(bold_header = TRUE) %>%
+      align(align = "center", part = "all") %>%
+      fontsize(size = 11, part = "header") %>%
+      fontsize(size = 10, part = "body") %>%
+      set_header_labels(
+        step_id = "Step #",
+        step_label = "Step",
+        n_before = "Before",
+        n_after = "After",
+        n_dropped = "Dropped"
+      ) %>%
+      width(2, 8.5, unit = "cm") %>%
+      width(5, 2.34, unit = "cm") %>%
+      autofit()
+} else {
+
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+
+[^7]: [https://jcr.clarivate.com/jcr/browse-journals](https://jcr.clarivate.com/jcr/browse-journals), JCR Year set to 2023. 
+
+### Sample
+
+```{r}
+#| fig-cap: "Frequencies: Publications by Year in Population and Sample"
+#| label: fig-freq-pubs-comp
+#| fig-height: 6
+#| fig-width: 8
+#| fig-pos: H
+
+meta_final <- qs_read(file_meta_final)
+
+publications_by_year <- meta_final %>% 
+  count(published_year) %>%
+  mutate(percent = n/sum(n)) %>%
+  rename(N = n)
+sample_Balc <- publications_by_year # generate df for later sample size calculation
+
+population_size <- sum(publications_by_year$N)
+
+p1 <- publications_by_year %>%
+  mutate(published_year = as.numeric(published_year)) %>% 
+  ggplot(aes(x=published_year,y=N)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Population",
+    subtitle = paste0("N = ",population_size),
+    x = "Published in Year",
+    y = "n") + 
+  scale_x_continuous( # reduce ticks labels
+    breaks = min(publications_by_year$published_year):max(publications_by_year$published_year),
+    labels = function(x) ifelse(x %% 2 == 1, x, "") # use modulo
+  )
+
+sample_final <- qs_read(file_sample_final)
+
+sample_Ay_year <- sample_final %>% 
+  count(published_year) %>%
+  mutate(percent = n/sum(n)) %>%
+  rename(N = n)
+
+sample_size <- sum(sample_Ay_year$N)
+
+p2 <- sample_Ay_year %>%
+  mutate(published_year = as.numeric(published_year)) %>% 
+  ggplot(aes(x=published_year,y=N)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Analytical Sample",
+    subtitle = paste0("n = ",sample_size),
+    x = "Published in Year",
+    y = "n") + 
+  scale_x_continuous( # reduce ticks labels
+    breaks = min(sample_Ay_year$published_year):max(sample_Ay_year$published_year),
+    labels = function(x) ifelse(x %% 2 == 1, x, "") # use modulo
+  )
+
+sample_A <- read_csv(file_train_stat)
+
+sample_A_by_year <- sample_A %>% 
+  count(published_year) %>%
+  mutate(percent = n/sum(n)) %>%
+  rename(N = n)
+
+sample_A_size <- sum(sample_A_by_year$N)
+
+p3 <- sample_A_by_year %>%
+  mutate(published_year = as.numeric(published_year)) %>% 
+  ggplot(aes(x=published_year,y=N)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Sample A",
+    subtitle = paste0("n = ",sample_A_size),
+    x = "Published in Year",
+    y = "n") + 
+  scale_x_continuous( # reduce ticks labels
+    breaks = min(sample_A_by_year$published_year):max(sample_A_by_year$published_year),
+    labels = function(x) ifelse(x %% 2 == 1, x, "") # use modulo
+  )
+
+sample_B <- read_csv(file_train) %>%
+  left_join(meta_final, by = "doi") %>%
+  select(doi, published_year)
+
+sample_B_by_year <- sample_B %>% 
+  count(published_year) %>%
+  mutate(percent = n/sum(n)) %>%
+  rename(N = n)
+
+sample_B_size <- sum(sample_B_by_year$N)
+
+p4 <- sample_B_by_year %>%
+  mutate(published_year = as.numeric(published_year)) %>% 
+  ggplot(aes(x=published_year,y=N)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Sample B",
+    subtitle = paste0("n = ",sample_B_size),
+    x = "Published in Year",
+    y = "n") + 
+  scale_x_continuous( # reduce ticks labels
+    breaks = min(sample_B_by_year$published_year):max(sample_B_by_year$published_year),
+    labels = function(x) ifelse(x %% 2 == 1, x, "") # use modulo
+  )
+
+if(output_format == "pdf/tex") {
+  print((p1|p2) / (p3|p4))
+} else if(output_format == "docx") {
+  print((p1|p2) / (p3|p4))  
+} else {
+
+}
+
+export_plot <- (p1|p2)/(p3|p4) + plot_annotation(caption = "Figure 1")
+ggsave(file.path(dir_output_plots, "fig01-fig-freq-pubs-comp.eps"), export_plot, width = 8, height = 6, device = "eps")
+ggsave(file.path(dir_output_plots, "fig01-fig-freq-pubs-comp.jpg"), export_plot, width = 8, height = 6, dpi = 800, device = "jpeg")
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+Using the obtained crossref metadata, the analytical sample was drawn stratified by year according to the calculation in @sec-sampling. The resulting analytical sample contains roughly 10% of the population data. As seen in @fig-freq-pubs-comp, Sample A, that is the training and validation sample for the SI classifier, is intended as the proportion of SI papers are expected to not vary and therefore not stratified by year. Stratification by journal was rejected due to the resulting sample sizes of 100 journals would have required much more cases. 
+
+The final analytical sample is made up of 4,265 publications. The OS prevalence classification sample consists of 352 publications stratified by year whereas the unstratified sample A for the training of the SI classifiers consists of 408 publications. The next step involved downloading full-text HTML or PDF versions, only using legal and ethical sources.
+
+### Full Text Retrieval
+
+The initial approach to gathering full texts, which used Zotero to translate DOIs as per @scogginsMeasuringTransparencySocial2024, was unreliable across multiple attempts and software versions. Due to the unsuitability of existing software tools, be it for technical or legal reasons, a custom web application was developed.
+
+Downloading the analytical sample was mostly successful, though some publisher protections caused dropouts. Due to time constraints, additional more optimized runs were not feasible. Documents under 1,000 words were considered non-full-text papers. However, shorter HTML texts were retained for potential keyword matching. Text quality assessment (Flesch-Index) and word count identified missing full texts [@benoitQuantedaPackageQuantitative2018]. Full texts were downloaded for Independent Sample A and the Analytical Sample from which Sample B was drawn. The resulting dropouts were expected to have been implicitly handled by post-stratification, but publisher-level weighting was planned and considered but infeasible due to sparse cells that would have produced unstable weights. Post-stratification was conducted by year only, which does not correct publisher- or journal-specific dropouts. Future, non-piloting iterations should add publisher-level adjustment.
+
+## Classification Tasks and Methods
+
+This section will present a brief summary of all methods used to classify the variables of interest. A thorough discussion of all decisions taken, the full descriptions and specifications of the models used as well as the preprocessing steps can be found in the methodological report available in the OSF repository.
+
+Since most existing classification approaches considered were deemed unsuitable for this scope (e.g., @kimResearchPaperClassification2019; @sanguansatFeatureMatricizationDocument2012; @jandotInteractiveSemanticFeaturing2016), this work instead relies on Random-Forest and XGBoost-models trained on a manually and LLM coded subset of publications as LLMs have shown good performance on similar classification tasks [@buntValidatingUseLarge2025; @zhaoAdvancingSingleMultitask2024]. 
+
+For each task, OSP-specific document-feature-matrices using term frequencies or term-frequency inverse-document-frequency (TF-IDF[^8]) of keyword sets were partly adapted from @scogginsMeasuringTransparencySocial2024 and extended. 
+
+First, a strict dichotomous operationalization of "SI" or "not SI", as well as of the OSPs was synthesized and documented in a short coding manual. A subset of Sample A was coded by hand, followed by a ChatGPT-based labelling of the fulltext. The codebooks used can be found in the methodological report. On a random subsample, agreement of both after reconciliation was high ($\kappa$ $\approx$ .83), so combined manual/LLM labels (classification result variable values)  served as training and validation data for the ML classifiers. A similar approach was used for Sample B. Each OSP classifier was tuned on all possible combinations of different feature (variable) sets and models. Where @scogginsMeasuringTransparencySocial2024 used Support Vector Machines, Random Forest and XGBoost classifiers[^9] were chosen here for their superior performance in preliminary tests. The best-performing models were then applied to the entire analytical sample to classify the presence of SI and OSPs.
+
+While tree ensemble methods such as Random Forest and XGBoost, do not offer direct interpretability of individual predictions, this concern is most acute in high-stakes, individual-level decision contexts such as recidivism prediction or bail assessment [@rudinStopExplainingBlack2019]. Here, the classifiers serve as measurement instruments for document-level content analysis, and the goal is to estimate population-level prevalences rather than rendering consequential decisions about individuals. Furthermore, the feature space consists of interpretable, human-readable TF-IDF keyword sets, and training labels were validated against manual coding, anchoring model behaviour to an auditable construct definition. Feature importance scores reported alongside the results provide additional transparency into which terms drove classification. 
+
+Given time constraints and the pilot nature of the study, preprocessing and evaluation were optimized for the OSP classifier only, not for the SI classifier. The more rigorous workflow applied to OSP - designed to handle high computational demands and substantial class imbalance (unequal distribution of the outcome levels) - would likely also have improved SI performance but was not pursued because SI results were already satisfactory, as documented in the material provided. Furthermore, journal-level adoption of OSPs was originally intended to be assessed using the Transparency and Openness Promotion Factor [@nosekPromotingOpenResearch2015]. However, as the available sample sizes were insufficient for journal-level analyses, these were not carried out.
+
+[^8]: Term frequency (TF) is the count of a term in a document, while inverse document frequency (IDF) is the logarithm of the total number of documents divided by the number of documents containing the term. TF-IDF is calculated as TF multiplied by IDF, giving higher weight to terms that are frequent in a document but rare across the corpus [@sang-woonResearchPaperClassification2019; @ramosUsingTFIDFDetermine2003]. 
+
+[^9]: Random Forest is an ensemble learning method that constructs multiple decision trees during training and outputs the mode of the classes for classification tasks [@michalski1993]. XGBoost (Extreme Gradient Boosting) is a more advanced ensemble method that builds trees sequentially, where each new tree attempts to correct the errors of the previous ones, often leading to improved performance [@chenXGBoostScalableTree2016]. @boehmkeHandsonMachineLearning2020 provide a detailed introduction to these methods.
+
+## Analysis
+
+The research was deliberately designed to study open-science practices via supervised classifiers rather than relying exclusively on metadata. This choice prioritized scalability and the potential to capture practice signals that metadata may miss, at the cost of managing model error and class imbalance. Given the exploratory character of the work, the analyses were not pre-defined, only data collection, sampling, and the model-training strategy were specified in advance. Concerns about classifier interpretability informed the evaluation strategy [@gilpinExplainingExplanationsOverview2018].
+
+All OSP prevalence estimates are domain estimates - that is, estimates computed for a specific subpopulation (SI papers) rather than the full sample - drawn from a year-stratified random sample (see @tbl-02-cases2). Design weights were post-stratified to frame-by-year totals with finite-population corrections, meaning the estimates account for the unequal probability of selection across strata. Confidence intervals were computed using the beta-method transformation rather than standard Wald intervals, as the former provides more reliable coverage at low prevalence rates [@agrestiIntroductionCategoricalData2007]. All variance estimation is design-based, reflecting the sampling structure rather than assuming a simple random sample. 
+
+Results generalize to the keyword-filtered data. With $n=1,763$ SI papers, SI-domain CIs are wider than the planned $\pm$ 1.5 pp. Because some SI papers may have been excluded by the screening, OSP levels for all SI papers in the full corpus of 90k publications may differ. An audit of excluded records could quantify the coverage and enable adjustment but was not conducted here.
+
+OSP labels were assigned by classifiers whose sensitivity (true positive rate) and specificity (true negative rate) are imperfect, with potential misclassifications affecting the reported prevalence rates. To assess robustness and account for classifier uncertainty, a simple sensitivity analysis using the Rogan-Gladen correction for misclassification of a binary outcome was conducted [@liuQuantitativeBiasAnalysis2023; @vallecamposSerosurveySerologicalSurvey2020]. 
+
+Data is reported per year. As per year data given the very low prevalences is extremely sparse, domain estimates for the full time period are reported as estimates of the prevalence throughout the years. OA could have been reported separately, simply adjusted using sampling weights, as it's measured for the full sample using metadata, which is expected to reflect true prevalence, but is shown along with the other OSPs for consistent interpretability.
+
+# Results & Discussion
+
+Two research questions were formulated: $RQ_1$ on the prevalence of OD and OM among statistical-inference (SI) publications, and $RQ_2$ on the prevalence of PR. After extensive model development, validation, calibration, thresholding, and misclassification adjustment, prevalences for OD, OM, and PR were too low for the ML classifiers to yield interpretable, adjusted estimates. 
+
+The ML classifiers trained on GPT labels inherit GPT's strengths and the data's sparsity. For the relatively small 20% validation set coded by GPT, the open-science practice classifiers are less precise and less reliable than the Statistical-Inference classifier. In contrast, a question that was not originally foregrounded proved answerable: the prevalence and trajectory of OA among SI publications, measured from metadata with high reliability, show clear increases over time.
+
+Before misclassification adjustment, design-based prevalences were estimated among SI papers with 95% CIs. For outcomes identified by the ML classifiers (OD, OM, PR), these reflect survey-design uncertainty only. 
+
+@tbl-03-osp-prev-overall confirms low prevalences across the full period with OA being the only exception, estimated to be used in $40.9\%$ (38.8-43.1 CI) across the population. PR, OM and OD are all estimated to be available for only less than five percent of the publications.
+
+```{r}
+#| tbl-cap: Overall Prevalence of open science practices among Statistical Inference Papers (Design-Weighted to Frame-by-Year Totals)
+#| label: tbl-03-osp-prev-overall
+df <- qs_read(file_sample_analysis)
+
+population <- qs_read(file_meta_final)
+
+# ensure that types match
+df <- df %>% mutate(published_year = as.integer(published_year))
+population <- population %>% mutate(published_year = as.integer(published_year))
+
+# Binary recodes for all targets 
+targets <- c("is_open_access","is_open_data","is_open_materials","is_prereg")
+
+df_bin <- df %>%
+  mutate(
+    across(
+      all_of(targets),
+      ~ ifelse(. == "Yes", 1, ifelse(. == "No", 0, NA_real_)),
+      .names = "{.col}_bin"
+    ))
+    
+# Frame totals by year (the ~40k post-keyword frame)
+pop_year <- population %>%
+  count(published_year, name = "Freq") %>%
+  arrange(published_year)
+
+# add counts
+df_bin <- df_bin %>%
+  left_join(pop_year %>% rename(N_y = Freq), by = "published_year")
+
+# Base design on all sampled records, stratified by year, finite population correction
+des0 <- svydesign(ids = ~1, strata = ~published_year, fpc = ~N_y, data = df_bin)
+des_ps <- postStratify(design = des0, strata = ~published_year, population = pop_year)
+
+# Make sure the *_bin fields are truly numeric 0/1 inside the design
+des_ps <- des_ps %>% update(
+  is_open_access_bin    = as.numeric(df_bin$is_open_access == "Yes"),
+  is_open_data_bin      = as.numeric(df_bin$is_open_data == "Yes"),
+  is_open_materials_bin = as.numeric(df_bin$is_open_materials == "Yes"),
+  is_prereg_bin         = as.numeric(df_bin$is_prereg == "Yes"),
+  is_statistical_bin    = as.numeric(df_bin$is_statistical == "Yes")
+)
+
+# restrict to statistical inference pubs at analysis time
+des_stat <- subset(des_ps, is_statistical_bin == 1)
+
+# This tells svyby to run svyciprop and also return the confidence interval
+ci_prop <- function(x, ...) {
+  # The formula is ~x because svyby passes the column itself
+  est <- svyciprop(~x, design = des_stat, method = "logit", na.rm = TRUE, ...)
+  ci <- confint(est)
+  # Return a named vector
+  c(prop = as.numeric(coef(est)), prop_low = ci[1], prop_upp = ci[2])
+}
+
+vars <- c(
+  "is_prereg_bin"         = "Preregistration",
+  "is_open_data_bin"      = "Open Data",
+  "is_open_materials_bin" = "Open Materials",
+  "is_open_access_bin"    = "Open Access"
+)
+
+overall_results_list <- lapply(names(vars), function(var_name) {
+  
+  # Create the formula for the specific variable
+  form <- as.formula(paste0("~", var_name))
+  
+  # Calculate the proportion and CI on the entire des_stat object
+  # again, use method = "beta" for robustness
+  est <- svyciprop(form, design = des_stat, method = "beta", na.rm = TRUE)
+  
+  # Extract the proportion and confidence interval
+  p_est <- as.numeric(coef(est))
+  ci <- as.numeric(confint(est))
+  
+  # Return a clean tibble with the results
+  tibble(
+    osp = paste0(vars[var_name], ""), # Creates the label, e.g., "Prereg (SI)"
+    p = p_est,
+    p_low = ci[1],
+    p_upp = ci[2]
+  )
+})
+
+# Combine the list of results into a single data frame
+overall_osp_si_raw <- bind_rows(overall_results_list)
+
+# Apply the final formatting to match your original code
+overall_osp_si <- overall_osp_si_raw %>%
+  mutate(`Prevalence` = sprintf("%.1f%% (%.1f-%.1f)", 100 * p, 100 * p_low, 100 * p_upp)) %>%
+  select(osp, `Prevalence`)
+
+# Print the final result
+overall_osp_si <- overall_osp_si %>%
+  rename(
+    OSP = osp
+  ) %>%
+  arrange(desc(`Prevalence`))
+
+tbl_overall_osp_si <- overall_osp_si %>% 
+  kbl(
+    format = 'latex',
+    longtable = TRUE,
+    booktabs = TRUE, 
+    escape = T,
+  ) %>% # add footnote
+  column_spec(1, width = '3cm')%>%
+  kable_styling(
+    position = "center",
+    latex_options = "hold_position",
+    full_width = FALSE) %>%
+  kableExtra::footnote(
+    general = "Prevalence estimates in statistical inference publications using design-weights per year (95% CI)", 
+    general_title = "Note:", 
+    footnote_as_chunk = T, 
+    threeparttable = T
+    )
+
+
+if(output_format == "pdf/tex") {
+  print(tbl_overall_osp_si)
+} else if(output_format == "docx") {
+  overall_osp_si %>% 
+    flextable() %>%
+      set_table_properties(width = 1, layout = "autofit") %>%
+      theme_booktabs(bold_header = TRUE) %>%
+      align(align = "center", part = "all") %>%
+      fontsize(size = 11, part = "header") %>%
+      fontsize(size = 10, part = "body") %>%
+      add_footer_lines(values = c("Note: Prevalence estimates in statistical inference publications using design-weights per year (95% CI)"))
+} else {
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+@fig-osp-adoption shows a steady rise in OA from \~20% in 2013 to \~50% in 2023, while the other practices suffer from extremely low counts; for some years (e.g., 2013 OD; 2016 PR) estimates were not possible. 
+
+```{r}
+#| fig-cap: OSP Adoption Over Time, among statistical inference papers (design-weighted)
+#| label: fig-osp-adoption
+#| fig-pos: H
+#| fig-width: 7
+
+# Loop through each variable, run svyby, and collect results in a list
+results_list <- lapply(names(vars), function(var_name) {
+  
+  # Create a formula for the specific variable, e.g., ~is_prereg_bin
+  form <- as.formula(paste0("~", var_name))
+  
+  # Run svyby for this single variable
+  # vartype = "ci" automatically calculates the confidence interval
+  res_by_year <- svyby(
+    formula = form,
+    by = ~published_year,
+    design = des_stat,
+    FUN = svyciprop,
+    method = "beta", # i'd use logit, but it always causes an error for this case. I was only able to solve this after one day of work: if using logit as planned, a warning about "observations with zero weight not used for calculating dispersion" appears, which indicates the failure of the iterative process to find the best estimates - which results in one value failing to be calculated (open access in year 2013). 
+    vartype = "ci",
+    na.rm = TRUE
+  )
+  
+  # Add a column with the "pretty" variable name (e.g., "Preregistration")
+  res_by_year$variable <- vars[var_name]
+  
+  # Rename the columns to match what ggplot expects
+  # The output columns are the variable name (e.g., is_prereg_bin), ci_l, and ci_u
+  colnames(res_by_year)[2] <- "prop" # The second column is always the proportion
+  
+  return(res_by_year)
+})
+
+# Combine the list of results into a single data frame
+yearly_long <- bind_rows(results_list) %>%
+  # Rename ci columns to prop_low and prop_upp for your ggplot code
+  rename(prop_low = ci_l, prop_upp = ci_u)
+
+vars <- c(
+  "is_prereg_bin" = "Preregistration",
+  "is_open_data_bin" = "Open Data",
+  "is_open_materials_bin" = "Open Materials",
+  "is_open_access_bin" = "Open Access"
+)
+
+legend_labs <- c(
+  "Preregistration"= "Preregistration",
+  "Open Data"= "Open Data",
+  "Open Materials" = "Open Materials",
+  "Open Access" = "Open Access"
+)
+
+p <- ggplot(yearly_long, aes(x = published_year, y = prop, color = variable)) +
+  geom_ribbon(
+    aes(
+      ymin = prop_low, 
+      ymax = prop_upp, 
+      fill = variable
+      ),
+    alpha = 0.10, 
+    color = NA
+    ) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.5) +
+  scale_x_continuous(
+    breaks = pretty(unique(yearly_long$published_year), n = 13)) +
+  scale_y_continuous(
+    labels = scales::percent_format(accuracy = 1), limits = c(0, 0.65),
+    breaks = pretty(seq(0, 0.65, by = 0.05), n = 7)
+    ) +
+  scale_fill_manual(values = osp_cols, guide = "none") +
+  scale_color_manual(
+    values = osp_cols,
+    name = "",
+    labels = function(x) legend_labs[x]
+    ) +
+  labs(
+    x = "", y = "",
+    color = ""#,
+    #title = "OSP Adoption Over Time",
+    #subtitle = "Among statistical inference papers (design-weighted to frame-by-year totals)"
+  ) +
+  theme(legend.position = "bottom") +
+  guides(color = guide_legend(ncol = 4))
+
+tbl_osp_prev_overall_dsadj <- yearly_long
+
+print(p)
+
+export_plot <- p + labs(caption = "Figure 2")
+ggsave(file.path(dir_output_plots, "fig02-fig-osp-adoption.eps"), export_plot, width = 7, height = 5, device = "eps")
+ggsave(file.path(dir_output_plots, "fig02-fig-osp-adoption.jpg"), export_plot, width = 7, height = 5, dpi = 800, device = "jpeg")
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+In parallel, @tbl-04-sample-char suggests systematic differences between SI and non-SI papers: distributions of text sources differ (likely reflecting publisher effects or text-quality variation), abstracts-only are more common among non-SI items, word counts are higher for SI papers, journal impact is higher, and OA appears more common. Several contrasts are statistically significant ($p < .001$), but these should be treated as descriptive given unmodeled multilevel variance and field composition.
+
+```{r}
+#| tbl-cap: Sample Characteristics by Statistical Inference Status
+#| label: tbl-04-sample-char
+#| tbl-pos: H 
+
+tbl_sample_desc <- df %>% mutate(
+  journal_category = case_when(
+    journal_category == "PSYCHOLOGY, MULTIDISCIPLINARY" ~ "A",
+    journal_category == "LAW" ~ "B",
+    journal_category == "CRIMINOLOGY & PENOLOGY" ~ "C"
+  )) %>%
+  tbl_summary(
+    include = c(is_open_access, is_open_data, is_open_materials, is_prereg, txt_source, txt_only_abstract, journal_category, journal_jif_quartile, txt_count, txt_flesch, journal_x2023_jif),
+    by = is_statistical,
+    label = list(
+      is_open_access = "Open Access",
+      is_open_data = "Open Data",
+      is_open_materials = "Open Materials",
+      is_prereg = "Preregistration",
+      txt_source = "Text Source",
+      txt_only_abstract = "Only Abstract",
+      journal_category = "Journal Category",
+      journal_jif_quartile = "JIF Quartile",
+      txt_count = "Count: Words",
+      txt_flesch = "Flesch Score",
+      journal_x2023_jif = "JIF (2023)",
+      is_statistical = "Statistical Inference"
+      ),
+    statistic = list(
+        all_continuous()  ~ "{mean} ({sd})",
+        all_categorical() ~ "{n} / {N} ({p}%)"
+      ),
+      missing = "no"
+  ) %>%
+    add_p(
+    include = c(txt_only_abstract, txt_source, txt_count, txt_flesch, journal_x2023_jif),
+    test = list(
+      txt_only_abstract ~ "fisher.test",
+      txt_source        ~ "chisq.test",
+      txt_count         ~ "wilcox.test",
+      txt_flesch        ~ "wilcox.test",
+      journal_x2023_jif ~ "wilcox.test"
+    ),
+    pvalue_fun = label_style_pvalue(digits = 3)
+  ) %>%
+  add_overall() %>%
+  modify_header(label ~ "**Variable**") %>%
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Statistical Inference**")%>% 
+  modify_footnote_body(
+    footnote = "A: Psychology, Multidisciplinary; B: Law; C: Criminology & Penology",
+    columns = "label",
+    rows = variable == "journal_category"
+  )
+
+if(output_format == "pdf/tex") {
+  tbl_sample_desc %>%
+    as_gt() %>%
+    tab_options(
+      table.font.size = gt::px(12),
+      latex.use_longtable = TRUE
+    )
+} else if(output_format == "docx") {
+  tbl_sample_desc %>%
+    as_flex_table() %>%
+      set_table_properties(width = 1) %>%
+      theme_booktabs(bold_header = TRUE) %>%
+      align(align = "center", part = "all") %>%
+      fontsize(size = 11, part = "header") %>%
+      fontsize(size = 8, part = "body") %>%
+      width(5, 2.34, unit = "cm") %>%
+      width(2:4, 3.5, unit = "cm") %>%
+      autofit() %>%
+      height_all(height = .2)
+} else {
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+In @tbl-05-osp-prev, adjustments were applied using sensitivity and specificity from the ML-validation analysis in  [@liuQuantitativeBiasAnalysis2023]. Under extreme rarity, adjustments become unstable: intervals widen dramatically (approaching $[0,1]$) or yield boundary/negative estimates when specificity is insufficient relative to prevalence. For OD, the false-positive rate ($1-\text{Sp} \approx 12.7\%$) exceeds the observed prevalence ($2.2\%$), pushing adjusted points below zero. For OM, low sensitivity ($\text{Se} = 0.20$) and tiny validation counts produce near-uninformative intervals. Given these constraints, the adjusted values can be interpreted as sensitivity ranges rather than confirmatory estimates. Any substantive claims should thereby rather be based on design-based estimates and on OA (measured from metadata).
+
+```{r}
+#| tbl-cap: Observed and Adjusted Prevalence of open science practices among Statistical Inference Papers
+#| label: tbl-05-osp-prev
+
+# https://influentialpoints.com/Training/estimating_true_prevalence.htm
+# https://academic.oup.com/ije/article/52/3/942/6982613?login=false
+#remotes::install_github("avallecam/serosurvey") #not added to the globals.R because remote install
+# Domain: SI only
+des_stat <- subset(des_ps, is_statistical_bin == 1)
+
+# n_Se = number of true positive cases validation set
+# n_Sp = number of true negative cases validation set
+# Se: sensitivity
+# Sp: specificity
+
+# Fill in Se/Sp and validation counts for each OSP/threshold you actually used
+osp_specs <- tribble(
+  ~var,                   ~label,            ~Se,   ~Sp,     ~n_Se, ~n_Sp,
+  "is_open_data_bin",     "Open Data",       1.0000, 0.8730,    7,    63,
+  "is_open_materials_bin","Open Materials",  0.2000, 1.0000,    1,    69,
+  "is_prereg_bin",        "Preregistration",          1.0000, 0.9848,    4,    66
+)
+
+# Function to compute one row (unadjusted + adjusted): 
+# estimated prevalences per open science practices, adjusted and non adjusted, within the domain
+rg_row <- function(var, label, Se, Sp, n_Se, n_Sp, smooth = TRUE, level = 0.95) {
+  # design-based observed prevalence (probability scale)
+  m <- svymean(as.formula(paste0("~", var)), design = des_stat, na.rm = TRUE)
+  p_obs  <- as.numeric(coef(m))
+  se_obs <- as.numeric(SE(m))
+  z <- qnorm(1 - (1 - level)/2)
+  ci_obs <- pmax(0, pmin(1, p_obs + c(-1,1)*z*se_obs))  # Wald CI for display
+
+  denom <- Se + Sp - 1
+  if (denom <= 0) {
+    return(tibble(
+      osp = label, var = var,
+      p_obs = p_obs, p_obs_low = ci_obs[1], p_obs_upp = ci_obs[2],
+      p_adj = NA_real_, p_adj_low = NA_real_, p_adj_upp = NA_real_,
+      Se = Se, Sp = Sp, n_Se = n_Se, n_Sp = n_Sp,
+      note = "Se+Sp<=1; RG not identifiable"
+    ))
+  }
+
+  # rogan-gladen: point + SE including Se/Sp uncertainty
+  prev_tru <- serosurvey::rogan_gladen_estimator(prev.obs = p_obs, Se = Se, Sp = Sp)
+  se_tru   <- serosurvey::rogan_gladen_stderr_unk(
+    prev.obs = p_obs, stderr.obs = se_obs, prev.tru = prev_tru,
+    Se = Se, Sp = Sp, n_Se = n_Se, n_Sp = n_Sp
+  )
+  ci_tru <- pmax(0, pmin(1, prev_tru + c(-1,1)*z*se_tru))
+
+  tibble(
+    osp = label, var = var,
+    p_obs = p_obs, p_obs_low = ci_obs[1], p_obs_upp = ci_obs[2],
+    p_adj = prev_tru, p_adj_low = ci_tru[1], p_adj_upp = ci_tru[2],
+    Se = Se, Sp = Sp, n_Se = n_Se, n_Sp = n_Sp,
+    note = NA_character_
+  )
+}
+
+# Build the table for all OSP by mapping/looping over all osp's using the osp specs tibble
+osp_table <- pmap_dfr(osp_specs, ~ rg_row(..1, ..2, ..3, ..4, ..5, ..6))
+
+# super beautiful percentages for presentation
+osp_table_pretty <- osp_table %>%
+  rename(
+    OSP = osp
+  ) %>%
+  mutate(
+    `Obs. (.95 CI)` = sprintf("%.1f%% (%.1f-%.1f)",
+                                    100*p_obs, 100*p_obs_low, 100*p_obs_upp),
+    `Adj. (.95 CI)` = ifelse(is.na(p_adj),
+                                   "n/a",
+                                   sprintf("%.1f%% (%.1f-%.1f)",
+                                           100*p_adj, 100*p_adj_low, 100*p_adj_upp))
+  ) %>%
+  select(OSP,
+         `Obs. (.95 CI)`,
+         `Adj. (.95 CI)`,
+         Se, Sp, n_Se, n_Sp)
+
+# Pretty formatters
+pct <- function(x) sprintf("%.1f\\%%", 100 * x)             # -> "2.2\%"
+ci  <- function(l, u) sprintf("(%.1f-%.1f)", 100*l, 100*u)  # -> "(1.5-2.8)"
+
+osp_table_pretty <- osp_table %>%
+  transmute(
+    OSP = osp,
+    `Obs. (95\\% CI)` = paste0(pct(p_obs), " ", ci(p_obs_low, p_obs_upp)),
+    `Adj. (95\\% CI)` = ifelse(
+      is.na(p_adj), "n/a",
+      paste0(pct(p_adj), " ", ci(p_adj_low, p_adj_upp))
+    ),
+    Se, Sp,
+    TP = n_Se, TN = n_Sp
+  )
+
+# Safer header superscripts (math mode)
+colnames(osp_table_pretty) <- c(
+  "OSP", "Obs. (95\\% CI)", "Adj. (95\\% CI)",
+  "Se$^{1}$", "Sp$^{2}$", "Pos$^{3}$", "Neg$^{4}$"
+)
+
+if(output_format == "pdf/tex") {
+  osp_table_pretty %>%
+    kbl(format = "latex", booktabs = TRUE, escape = FALSE,
+        align = c("l","l","l","r","r","r","r"), longtable = TRUE) %>%
+    kable_styling(latex_options = "hold_position") %>%
+    kableExtra::footnote(
+      number = c(
+        "Sensitivity",
+        "Specificity",
+        "Number of positive cases in validation set",
+        "Number of negative cases in validation set"
+      ),
+      escape = FALSE
+    )
+} else if(output_format == "docx") {
+  colnames(osp_table_pretty) <- c(
+  "OSP", "Obs. (95% CI)", "Adj. (95% CI)",
+  "Se", "Sp", "Pos", "Neg"
+  )
+  osp_table_pretty %>% 
+    mutate(
+      across(where(is.character),
+                ~ stringr::str_replace_all(.x, "\\\\([%&_{}#])", "\\1"))
+      ) %>%
+    flextable() %>%
+      set_table_properties(width = 1) %>%
+      theme_booktabs(bold_header = TRUE) %>%
+      align(align = "center", part = "all") %>%
+      fontsize(size = 11, part = "header") %>%
+      fontsize(size = 9, part = "body") %>%
+      footnote(
+        i = 1,
+        j = 4:7,
+        value = as_paragraph(
+          c(
+            "Sensitivity",
+            "Specificity",
+            "Number of positive cases in validation set",
+            "Number of negative cases in validation set"
+          )
+        ),
+        part = "header",
+        ref_symbols = c("a", "b", "c", "d")
+      ) %>%
+      fontsize(size = 9, part = "footer") %>%
+      width(1, 3.13, unit = "cm") %>%
+      width(2:3, 3.62, unit = "cm") %>%
+      width(4:7, 1.5, unit = "cm") %>%
+      autofit() %>%
+      colformat_double(
+        big.mark = ",", digits = 2, na_str = "N/A"
+      )
+} else {
+
+}
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+Earlier differences in text sources suggest heterogeneity by journal, thereby implicating also publisher variance [@scogginsMeasuringTransparencySocial2024]. @fig-osp-time-by-publisher visualizes OA shares over time for the 12 most prolific publishers in the sample (listed in the caption). Leveraging larger $n$, the author fit simple ordinary least squares (OLS) regression trends to annual OA proportions. The four most prolific publishers show clear increases. Four publishers do not: Oxford University Press, Emerald, ASCE, and MDPI. MDPI remains at 100% OA, Emerald at 0% in this sample; ASCE shows an apparent decline consistent with limited observations; Oxford University Press is relatively stable. All the increases observed are highly statistically significant. Future work should use models designed for proportions (e.g., binomial generalized linear models, GLMs) and, ideally, hierarchical pooling across publishers and years.
+
+```{=latex}
+\footnotesize
+```
+
+```{r}
+#| label: fig-osp-time-by-publisher
+#| fig-width: 9
+#| fig-height: 9
+#| fig-cap: Open Access by Publisher over Time.
+#| fig-pos: H
+
+library(ggpmisc)
+library(scales)
+
+df <- qs_read(file_sample_analysis)
+
+# OA indicator & clean year
+df2 <- df %>%
+  mutate(
+    published_year = suppressWarnings(as.integer(published_year)),
+    oa = case_when(is_open_access == "Yes" ~ 1,
+                   is_open_access == "No"  ~ 0,
+                   TRUE ~ NA_real_)
+  )
+
+# Publisher-year aggregates with correct denominators
+final_data_all <- df2 %>%
+  filter(!is.na(journal_publisher)) %>%
+  group_by(journal_publisher, published_year) %>%
+  summarise(
+    yes = sum(oa, na.rm = TRUE),
+    n   = sum(!is.na(oa)),
+    prop = if_else(n > 0, yes / n, NA_real_),
+    .groups = "drop"
+  ) %>%
+  filter(!is.na(prop)) %>%
+  arrange(journal_publisher, published_year)
+
+# Panel order = top-12 by sample size (make this explicit in caption)
+panel_counts_all <- final_data_all %>%
+  group_by(journal_publisher) %>%
+  summarise(N = sum(n), .groups = "drop")
+
+panel_order <- panel_counts_all %>%
+  arrange(desc(N)) %>%
+  slice_head(n = 12) %>%
+  pull(journal_publisher)
+
+final_data_all <- final_data_all %>%
+  filter(journal_publisher %in% panel_order) %>%
+  mutate(journal_publisher = factor(journal_publisher, levels = panel_order))
+
+panel_counts_all <- panel_counts_all %>%
+  filter(journal_publisher %in% panel_order) %>%
+  mutate(journal_publisher = factor(journal_publisher, levels = panel_order),
+         x = min(final_data_all$published_year, na.rm = TRUE),
+         y = 1.00)
+
+# Optional: drop very tiny cells (keeps noise down)
+min_n <- 5
+final_plot <- final_data_all %>% filter(n >= min_n)
+
+grid_publishers <- ggplot(
+  final_plot,
+  aes(x = published_year, y = prop, group = journal_publisher)
+) +
+  # points (size legend only)
+  geom_point(alpha = 0.2, stroke = 0, show.legend = TRUE) +
+  # red smooth (color & fill get legend entry "Binomial GLM")
+  geom_smooth(
+    aes(weight = n, color = "Linear trend", fill = "Linear trend CI"),
+    method = "lm",
+    method.args = list(family = quasibinomial()),
+    se = TRUE, alpha = 0.10, linewidth = 1, show.legend = TRUE
+  ) +
+  # black line (color legend entry "Observed proportion")
+  geom_line(
+    aes(
+      color = "Observed proportion"
+      ),
+    show.legend = TRUE
+    ) +
+  coord_cartesian(ylim = c(0, 1)) +
+  scale_y_continuous(labels = label_percent(accuracy = 1)) +
+  scale_x_continuous(breaks = c(2013, 2018, 2022)) +
+  facet_wrap(~ journal_publisher, scales = "fixed") +
+  geom_text(
+    data = panel_counts_all,
+    aes(x = x, y = y, label = paste0("n = ", N)),
+    inherit.aes = FALSE, hjust = 0, vjust = 1, size = 3
+  ) +
+  # legends 
+  scale_color_manual(
+    name = NULL,
+    values = c("Observed proportion" = "black", "Linear trend" = "red")
+  ) +
+  scale_fill_manual(
+    values = c("Linear trend" = "red"),
+    guide = "none"  # ribbon doesn't need its own legend
+  ) +
+  guides(
+    color = guide_legend(
+      override.aes = list(
+        fill = NA,          # don't show ribbon in legend
+        linewidth = c(0.6, 1),
+        alpha = 1
+      )
+    )
+  ) +
+  # theme
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    x = "",
+    y = "% of Open Access articles",
+    title = "",
+    caption = paste0(
+      "Top 12 publishers by sample n.\nWithin-year proportions from stratified-by-year sample.\n",
+      "Estimates are within-year proportions (weights constant within year)."
+    )
+  ) +
+  stat_poly_eq(
+    use_label(c("eq")),
+    npcx = 2013, npcy = 0.95,
+    size = 2.4,
+    output.type = "expression"
+  ) +
+  stat_poly_eq(
+    use_label(c("adj.R2", "p")),
+    npcx = 2013, npcy = 0.9,
+    size = 2.4
+  )
+
+print(grid_publishers)
+
+export_plot <- grid_publishers + labs(caption = paste("Figure 3", grid_publishers$labels$caption, sep = "\n"))
+ggsave(file.path(dir_output_plots, "fig03-fig-osp-time-by-publisher.eps"), export_plot, width = 9, height = 9, device = "eps")
+ggsave(file.path(dir_output_plots, "fig03-fig-osp-time-by-publisher.jpg"), export_plot, width = 9, height = 9, dpi = 800, device = "jpeg")
+
+if (isTRUE(debug_mode)) {
+  debug_info[[knitr::opts_current$get("label")]] <- 
+    if (knitr::is_html_output()) "HTML" else "LaTeX"
+}
+```
+
+```{r}
+#| label: export-plots-greyscale
+
+# Figure 3
+gray_p <- p +
+  scale_color_manual(
+    name = "",
+    values = c(
+      "Preregistration" = "grey20",
+      "Open Data" = "grey40",
+      "Open Materials" = "grey60",
+      "Open Access" = "grey80"
+    ),
+    labels = function(x) legend_labs[x]
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Preregistration" = "grey20",
+      "Open Data" = "grey40",
+      "Open Materials" = "grey60",
+      "Open Access" = "grey80"
+    ),
+    guide = "none"
+  ) +
+  labs(title = "Figure 3: OSP Adoption Over Time")
+
+ggsave(file.path(dir_output_plots, "fig03-fig-osp-adoption-grayscale.jpg"),
+       gray_p, width = 7, height = 5, dpi = 800, device = "jpeg")
+ggsave(file.path(dir_output_plots, "fig03-fig-osp-adoption-grayscale.eps"),
+       gray_p, width = 7, height = 5, dpi = 800, device = "jpeg")
+
+# Figure 4
+gray_publishers <- grid_publishers +
+  scale_color_manual(
+    name = NULL,
+    values = c("Observed proportion" = "black", "Linear trend" = "grey50")
+  ) +
+  scale_fill_manual(
+    values = c("Linear trend CI" = "grey70"),
+    guide = "none"
+  ) +
+  labs(title = "Figure 4: Open Access by Publisher over Time")
+
+ggsave(file.path(dir_output_plots, "fig04-fig-osp-time-by-publisher-grayscale.jpg"),
+       gray_publishers, width = 9, height = 9, dpi = 800, device = "jpeg")
+ggsave(file.path(dir_output_plots, "fig04-fig-osp-time-by-publisher-grayscale.eps"),
+       gray_publishers, width = 9, height = 9, dpi = 800, device = "jpeg")
+```
+
+```{=latex}
+\normalsize
+```
+
+This study was deliberately scoped as a pilot, which constrained coverage, precision, and tooling. The population assessed was limited to SI papers from the top 100 JCR journals in criminology and legal psychology and to Crossref metadata, so venue and index biases remain. The 2013-2023 window omits the most recent changes. Keyword screening did not fully exclude non-target items, and a Quarto "freeze" configuration led to using print over online dates in some cases. Full-text retrieval was partial and legally bounded to text and data mining permitted publishers, short documents (<1,000 words) were treated as missing full text, risking misclassification.
+
+Measurement and modeling challenges were substantial. SI/OSP labels were trained on a small, single-coder hand set plus GPT assistance. Severe class imbalance for OSPs, few validation positives, and upsampling inflated nominal accuracy while depressing stability. Misclassification adjustments (Rogan-Gladen) became unstable at very low prevalences, and some OA trend analyses used simple OLS rather than binomial/GLM approaches.
+
+In the methodological report, comparing basic text characteristics between OSP-labeled papers and non-OSP papers revealed non-independence (e.g., differences in word count, Flesch score, and text source), despite the assumption that such features should not vary with true OSP status. This pattern indicates likely misclassification and/or model leakage, with classifiers picking up irrelevant proxies (publisher templates, document length) rather than OSP content.
+
+I therefore propose a series of recommendations for future iterations, that should expand bibliographic metadata sources (Crossref + Scopus and Web of Science) and further audit screened-out records to assess selection, operationalizations with sharper rules more close to the constructs defined by e.g. OSF, employ multi-coder assessment, and quantify inter-rater-reliability on a larger training data base OR classify leveraging ChatGPT as implied by the very accurate precisions evident here and replace OLS with binomial GLMs or hierarchical models for proportions. On the technicals side, a more stringent Quarto setup should be used, with simplified modular code based on a refined version of the codebase used here. The downloader should be improved in terms of a more homogeneous extraction logic by including the HTML and PDF full-text extraction in the pre-processing pipeline, making the whole process more transparent, reproducible and less error-prone. Finally, the sample size should be increased substantially, ideally to the full population of SI papers in the frame, to improve precision and enable analysis on journal level.
+
+Despite all the limitations, there are main substantive implications: OSP prevalence signals in SI papers-especially PR and OM-are rare enough that model-based estimation is fragile at this scale, whereas OA, measured from metadata, shows a clear upward trend approaching roughly half of SI outputs by 2023. Methodologically, GPT proves to be a promising primary coder for a scaled follow-up, and the pipeline developed here provides a reproducible, yet improvable foundation for a larger, better-powered study.
+
+# Conclusion
+
+The replication crisis has intensified the examination of research practices and accelerated the push for transparency and openness. This study contributes by mapping the adoption of OSPs within criminology and legal psychology, establishing a baseline for future efforts. The evidence indicates meaningful progress in availability-most clearly in OA-yet massive, persistent gaps in reproducibility, particularly for OD, OM, and PR.
+
+Two decades ago, @ioannidisWhyMostPublished2005 argued that the credibility of findings is closely tied to statistical power, field-specific protocols, and careful attention to pre-study odds. In other words, simply assessing p-values in a rather mechanistic manner is insufficient [@collingStatisticalInferenceReplication2021]. In that spirit, this work emphasizes measurement, validation, and transparency over nominal statistical "wins," offering an initial, field-specific picture of where credibility can be strengthened and how to get there.
+
+Methodologically, the study shows that GPT-assisted coding can be accurate and scalable for detecting OSPs, while downstream ML classifiers struggle under extreme class imbalance-a limitation that complicates misclassification-adjusted prevalence estimation. Still, the pipeline built here demonstrates a path toward for larger, confirmatory follow-ups. 
+
+This work discussed the replication crisis, its implications for criminology and legal psychology, and how OSPs can help to address some of the issues that have been raised. While the last decades the wording "crisis" framed the discussion in a rather negative light, recent work suggests an upward trend in OSPs which accelerates the transition towards more credible research-moving "from crisis to credibility" [@korbmacherReplicationCrisisHas2023]. Awareness and adoption of open practices are growing [@grossmannReasonsCautiousOptimism2021], institutions are adopting norms and incentives [@smaldinoOpenScienceModified2019]. Even though the results of this study indicate that there is still a long way to go, the upward trend in OA and the presence of OM and PR in some papers are encouraging signs
+
+To make sure that our results are robust, reliable and credible, this work shall be seen as a call for an open, cumulative, and collaborative research culture. Accordingly, the author invites direct reproduction and incremental improvement of this pipeline-via open sharing of data, code, prompts, and labeling protocols-so the analysis can be stress-tested, recalibrated, and strengthened.
+
+```{=latex}
+\newpage
+\setcounter{section}{0}
+\renewcommand\thesection{}
+```
+
+# Data availability {.unnumbered}
+
+Materials, the analytical dataset and code to reproduce the manuscript as well as the methodological report are available at a public OSF-repository that can be accessed here:
+
+- https://osf.io/rvpc3/overview?view_only=0307dc0d99f74b50a738720a4a757aa0.
+
+Further instructions can be found in the README files.
+
+The Methodological report is also available via Github:
+
+- https://e4uka8g.s.gy/MiningOSPinCriminologyMethods
+
+While text and data mining for scientific use are broadly permitted under the EU Directive 2019/790, the sharing of the fulltext data is restricted under copyright law. The labelled dataset containing metadata and OSP labels for the sample is available in the OSF repository and can be used to reproduce the statistical analyses presented. The code for the downloader is currently under revision and may be made available in the OSF repository as well.
+
+# Funding {.unnumbered}
+
+This research received no external funding.
+
+# Conflict of interest {.unnumbered}
+
+One of the editors of this special issue participated as an academic advisor.
+
+# Acknowlegments {.unnumbered}
+
+I would like to thank my advisor, [Advisor Name], for his guidance, constructive feedback, and steady support throughout this project. His expertise and encouragement were invaluable in shaping both the research and this publication.
+
+# Author Biography {.unnumbered}
+
+Michael Beck holds an MSc in Sociology and Social Research from the University of Cologne, Germany. He is interested in computational social science and works as a research associate at the German Institute for Adult Education (Bonn), focusing on evaluating generative AI for education and educational research.
+
+```{=latex}
+\newpage
+```
+
+# Bibliography {.unnumbered}
+
+::: {#refs}
+:::
+
+```{r}
+#| results: asis
+
+if (isTRUE(debug_mode)) {
+  print("# Debug Info")
+  print(debug_info)
+
+  print(paste0("Output Format set to **", output_format, "**"))
+}
+```

@@ -1,0 +1,17 @@
+project:
+  output-dir: _output/normal
+
+authors:
+  - name: Michael Beck
+    affiliations:
+      - ref: die
+    corresponding: true
+    email: michaeljbeck@proton.me
+    orcid: 0009-0005-4622-4717
+
+filters:
+  - authors-block
+
+affiliations:
+  - id: die
+    name: German Institute for Adult Education - Leibniz Centre for Lifelong Learning (DIE), Bonn, Germany

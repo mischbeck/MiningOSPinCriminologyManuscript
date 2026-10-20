@@ -1,0 +1,148 @@
+(osf)
+accessible at [url]
+accompanying dataset
+all data
+analysis code available
+analysis scripts available
+anonymized data available
+appendix with materials
+available at [url]
+available on dryad
+available on figshare
+available on github
+available on zenodo
+badge for open data
+badge for open materials
+badge for pre-registration
+badge for preregistration
+can be accessed 
+can be accessed at
+cannot be disclosed
+cannot be provided
+cannot be shared
+cannot share due to confidentiality
+code and materials available
+code available
+code repository
+computational notebooks
+conceptual replication
+confidential dataset
+creative commons license (for data/materials)
+data accessibility
+data and code available
+data are available upon request
+data are confidential
+data are proprietary
+data are publicly available
+data availability statement
+data available in the supplementary materials
+data cannot be made available
+data descriptor
+data from all three experiments, a codebook, 
+data not available
+data not available
+data sharing is not applicable
+data sharing is not applicable
+data sharing not possible
+data will be available upon publication
+data will be available upon request
+data-analysis scripts
+data-analysis scripts
+dataset available
+datasets available
+deposited in [repository]
+deposited in osf
+deposited in zenodo / figshare / dryad / github (repository-specific variants)
+direct replication
+doi for data
+embargoed data
+embargoed until [date]
+fair data
+full replication
+full replication
+github
+have been made publicly available
+hosted in public repository
+hosted on github
+hosted on osf
+is preregistered
+jupyter notebook
+materials availability statement
+materials cannot be shared
+materials not available
+no data available
+no preregistration
+not preregistered
+not preregistered
+not shared due to ethical restrictions
+not shared due to legal restrictions
+open access data
+open data
+open data badge
+open materials
+open materials badge
+open practices badge
+open practices disclosure
+open practices disclosure 
+open research statement
+open science framework  
+osf
+osf.io
+pre-analysis plan
+pre-registration
+pre-registration link
+preregistered at
+preregistered in aspredicted.org
+preregistered on osf
+preregistered study
+preregistration
+preregistration badge
+preregistration link
+preregistration was not completed
+public repository
+publicly available dataset
+publicly available on the 
+raw data available
+registered in clinicaltrials.gov
+registered replication report
+registered report
+registered with [service]
+replication
+replication 
+replication attempt
+replication data
+replication dataset
+replication package available
+replication study
+repository
+repository link
+reproducibility materials
+reproducibility package
+reproducibility statement
+reproducible code
+restricted access data
+scripts 
+scripts and materials available
+shared via osf
+statistical code available
+statistical scripts
+stored on osf
+supplemental files
+supplemental materials
+supplementary appendix
+supplementary dataset
+supplementary dataset available
+supplementary files
+supplementary information
+supplementary materials available
+supplementary materials can be found
+supporting dataset
+supporting information available
+the data that has been used is confidential
+the design and analysis plan for the study were not preregistered
+this article has received the badges 
+transparency and openness promotion (top) guidelines
+transparency badge
+transparency statement
+uploaded to osf
+was preregistered

@@ -1,0 +1,264 @@
+Akaike information criterion (AIC)
+Bayesian information criterion (BIC)
+Bayes factor
+Markov chain Monte Carlo (MCMC)
+Gibbs sampling
+Metropolis–Hastings
+Expectation–Maximization algorithm (EM algorithm)
+Multiple imputation
+Missingness
+Inverse probability weighting
+Propensity score matching
+Marginal structural model
+Generalized estimating equations (GEE)
+Variance inflation factor (VIF)
+Cronbach’s alpha
+Principal component analysis (PCA)
+Factor loading
+Structural equation modeling (SEM)
+Path analysis
+Survival analysis
+Kaplan–Meier estimator
+Cox proportional hazards
+Hazard ratio
+Log‑rank test
+Quantile regression
+Tobit model
+Heckman selection model
+Latent variable model
+Item response theory (IRT)
+Nonparametric test
+Semi‑parametric model
+Kernel density estimation
+Local regression (LOESS)
+Spline regression
+Autoregressive integrated moving average (ARIMA)
+Vector autoregression (VAR)
+Generalized autoregressive conditional heteroskedasticity (GARCH)
+Granger causality
+Time‑series decomposition
+Cross‑validation
+k‑fold cross‑validation
+Leave‑one‑out cross‑validation
+Bootstrapped standard errors
+Jackknife
+Profile likelihood
+Robust standard errors
+Cluster‑robust variance
+Newey–West estimator
+Durbin–Watson test
+Breusch–Pagan test
+Shapiro–Wilk test
+Kolmogorov–Smirnov test
+Levene’s test
+Wilcoxon rank‑sum
+Mann–Whitney U test
+Kruskal–Wallis test
+Friedman test
+Tukey’s HSD
+Benjamini–Hochberg procedure
+False discovery rate
+P‑hacking
+Effect size
+Standardized coefficient
+Interaction term
+Mediation analysis
+Moderation analysis
+Random effects model
+Mixed‑effects model
+Hierarchical linear modeling (HLM)
+Random forest
+Support vector machine
+Decision tree
+ROC curve
+Area under the curve (AUC)
+Sensitivity
+Specificity
+Precision
+Recall
+F1 score
+Confusion matrix
+Silhouette score
+Elbow method
+Hierarchical clustering
+k‑means clustering
+Density‑based clustering (DBSCAN)
+Gaussian mixture model (GMM)
+Entropy measure
+Log‑linear model
+Generalized additive model (GAM)
+Empirical Bayes
+Bayesian credible interval
+Highest posterior density (HPD)
+Dirichlet process
+Gibbs sampler
+Hamiltonian Monte Carlo (HMC)
+Random-walk Metropolis
+Hamiltonian Monte Carlo (HMC)
+Permutation test
+Randomization inference
+Monte Carlo simulation
+Latin hypercube sampling
+Importance sampling
+Sequential Monte Carlo
+Reversible jump MCMC
+Particle filter
+Profile likelihood
+Penalized regression
+Ridge regression
+Lasso (least absolute shrinkage and selection operator)
+Elastic net
+Group lasso
+Adaptive lasso
+Bayesian Lasso
+Variational inference
+Expectation propagation
+Graphical models
+Directed acyclic graph (DAG)
+Structural causal model (SCM)
+Two-stage least squares (2SLS)
+Limited Information Maximum Likelihood (LIML)
+Intraclass correlation coefficient (ICC)
+Gini coefficient
+Theil index
+Shannon entropy (information theory)
+Kernel smoothing
+Nadaraya–Watson estimator
+Loess / LOWESS
+Piecewise regression
+Change‑point analysis
+Run chart
+Control chart (SPC)
+Funnel plot
+Forest plot
+Meta‑regression
+Heterogeneity (I²)
+Cochran’s Q test
+Fixed‑effect meta‑analysis
+Random‑effects meta‑analysis
+Network meta‑analysis
+Case‑control study
+Cohort study
+Cross‑sectional design
+Stepped‑wedge trial
+Matched pairs
+Cluster randomized trial
+Factorial experiment
+Crossover design
+Propensity‑score weighting
+Inverse‑variance weighting
+Sensitivity analysis
+Subgroup analysis
+Effect modification
+Mediation analysis
+Moderation analysis
+Interaction term
+Intravenous ratio estimator
+Mahalanobis distance
+Euclidean distance
+Kriging
+Variogram
+Spatial autocorrelation
+Moran’s I
+Geographically weighted regression (GWR)
+Bootstrapped confidence bands
+Bias–variance tradeoff
+Overfitting
+Underfitting
+Occam’s razor (model parsimony)
+Akaike weight
+Pseudo‑R²
+Hosmer–Lemeshow goodness‑of‑fit
+Jarque–Bera test
+Anderson–Darling test
+Cramér–von Mises test
+Box–Cox transformation
+Log‑link / identity‑link / probit‑link
+Offset term
+Dashboarding
+Data wrangling
+ETL (extract, transform, load)
+Data pipeline
+hypothesis test
+ANCOVA
+cluster
+cluster-
+null hypothesis
+null-hypothesis
+odds
+ratio
+odds-ratio
+survival
+participants
+survey
+trend
+longitudinal
+Interpretation
+Interpret
+r-squared
+Respondent
+Questionnaire
+item
+scale
+Response
+Demographic
+sociodemographic
+Population
+method
+Reliability
+reliable
+valid
+validity
+Coding
+Pretest
+pre-test
+likert
+Experimental
+randomization
+randomized
+Placebo
+Causality
+Confound
+r
+spss
+Manipulation
+manipulate
+manipulated
+python
+syntax
+panel
+Stratification
+Strata
+stratified
+Operational
+Construct
+construct validity
+Criterion validity
+Convergent validity
+Discriminant validity
+Selection
+bias biased
+Nonresponse bias
+Non-response bias
+Attrition
+Dropout
+Hawthorne effect
+Demand characteristics
+Social desirability bias
+Maturation effect
+History effect
+Testing effect
+Instrumentation effect
+Compensatory rivalry
+Diffusion of treatment
+Descriptive
+statistics
+Inferential
+Inference
+correlate
+variance
+Covariance
+skewed
+weighting
+Exploratory
+insignificant

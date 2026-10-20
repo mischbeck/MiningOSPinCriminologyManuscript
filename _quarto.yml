@@ -1,0 +1,58 @@
+project:
+  type: default
+
+lang: en-US
+
+profile:
+  default: default
+  group:
+    - [default, anon]
+
+keywords:
+  - Open Science Practices
+  - Open Access
+  - Open Data
+  - Open Materials
+  - Preregistration
+  - Text Mining
+  - Machine Learning Classification
+  - AI-assisted Coding
+  - Replication
+
+format:
+  docx:
+    prefer-html: true
+    toc: false
+    toc-depth: 3
+    lot: false
+    lof: false
+    reference-doc: custom-reference-doc.docx
+    fig-dpi: 300
+
+always_allow_html: true
+
+number-sections: true
+
+citeproc: true
+citation-package: none
+bibliography: literature/Thesis.bib
+reference-section-title: Bibliography
+link-citations: true
+csl: https://www.zotero.org/styles/sage-harvard
+
+execute:
+  freeze: auto
+  echo: false
+  warning: false
+
+execute-dir: file
+
+header-includes: |
+  \usepackage{pdfpages}
+  \pagenumbering{gobble}
+  \usepackage{booktabs}
+  \usepackage{caption}
+  \DeclareCaptionLabelSeparator{period-newline}{.\par}
+  \usepackage{setspace}
+  \usepackage{float}      % enables [H]
+  \usepackage[section]{placeins} % <- add [section]

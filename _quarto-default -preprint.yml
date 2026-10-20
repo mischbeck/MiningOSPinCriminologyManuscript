@@ -1,0 +1,38 @@
+project:
+  output-dir: _output/normal
+
+authors:
+  - name: Michael Beck
+    affiliations:
+      - ref: die
+    corresponding: true
+    email: michaeljbeck@proton.me
+    orcid: 0009-0005-4622-4717
+
+affiliations:
+  - id: die
+    name: German Institute for Adult Education - Leibniz Centre for Lifelong Learning (DIE), Bonn, Germany
+
+include-before: |
+  \captionsetup[figure]{format=plain, labelsep=period-newline, justification=centering, margin=2cm, font=footnotesize, singlelinecheck=false}
+  \captionsetup[table]{format=plain,  labelsep=period-newline, justification=centering, margin=2cm, font=footnotesize, singlelinecheck=false}
+
+  \begin{titlepage}
+    \thispagestyle{empty}
+    \begin{center}
+      \Large{\textbf{Michael Beck\footnote{German Institute for Adult Education - Leibniz Centre for Lifelong Learning (DIE), Bonn, Germany; ORCID: \href{https://orcid.org/0009-0005-4622-4717}{0009-0005-4622-4717}}}} \\
+      \vspace*{1.5cm}
+    \end{center}
+
+    \begin{abstract}
+        This pilot study addresses the current lack of systematic, large-scale evidence on Open Science Practices (OSPs) adoption in criminology and legal psychology. A scalable, machine-learning-based text classification pipeline is introduced to map the prevalence of Open Access (OA), Open Data (OD), Open Materials (OM), and Preregistration (PR). The analysis is based on publication metadata and a year-stratified sample of full texts from the top 100 journals in Criminology & Penology, Law, and Psychology (2013-2023). After identifying articles containing statistical inference (SI) via a high-performing classifier, the author utilized GPT-assisted coding and supervised learning to train specific classifiers for OD, OM, and PR. OA was classified using publicly available metadata. Among 1,763 SI articles with usable full text, design-based estimates reveal a significant disparity in OSP adoption. OA is relatively common (40.9%, 95% CI: 38.8-43.1) and has steadily increased from approximately 20% in 2013 to 50% in 2023. By sharp contrast, trends for OD, OM, and PR cannot be reliably quantified. Extreme class imbalance and the minimal number of positive cases indicate a very low underlying true prevalence for these practices in the assessed field. Methodologically, the study confirms that GPT-assisted coding supports accurate SI detection, but robust prevalence estimation for extremely low-frequency OSPs remains challenging for downstream classifiers. Overall, this project establishes a transparent and reproducible pipeline and provides critical baseline estimates for future, larger-scale assessments of research transparency in crime-related fields.
+    \end{abstract}
+
+    \vspace{1cm}
+    \noindent\textbf{Keywords:} Open Science Practices; Open Access; Open Data; Open Materials; Preregistration; Text Mining; Machine Learning Classification; AI-assisted Coding; Replication
+
+    \vspace{0.75cm}
+    \noindent\textbf{Date:} \today
+  \end{titlepage}
+  \newpage
+  \thispagestyle{empty}

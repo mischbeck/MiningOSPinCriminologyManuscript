@@ -1,0 +1,76 @@
+```{mermaid}
+%%| label: fig-flowchart-pipeline
+%%| fig-cap: "A flowchart of the full research process. All steps described are further explained in the methodologic report and the supplements."
+flowchart TD
+    A["Population
+    Top 100 JIF journals 2013-2023"]
+
+    B["Crossref 
+Metadata filtering
+95,042 → 40,860 publications
+Deduplication, date filter, keyword exclusions"]
+
+    C["Precision-based stratified sampling
+Target ±1.5 pp · n ≈ 4,265"]
+
+    D["Sample A
+n = 408 · unstratified
+SI classifier training only"]
+
+    E["Sample B
+analytical sample
+n = 4,265 · stratified by year"]
+
+    F["Manual + LLM labelling
+Subset of Sample A
+κ ≈ .83 after reconciliation"]
+
+    G["SI classifier trained
+Random Forest / XGBoost
+TF-IDF keyword features"]
+
+    H1["Full-text retrieval
+HTML / PDF, scraped"]
+ 
+    H2["Full-text retrieval
+HTML / PDF, scraped"]
+
+    I["SI classifier applied to Sample B"]
+
+    I2["SI papers identification
+n = 1,763 with usable full text"]
+
+    OA["OA classified from metadata
+using Crossref, Web of Science, Scopus"]
+
+    J["OSP training subset
+n = 352, from SI papers in Sample B
+manual & LLM labelling"]
+
+    KOD["OD classifier
+RF / XGBoost"]
+
+    KOM["OM classifier
+RF / XGBoost"]
+
+    KPR["Preregistration classifier
+RF / XGBoost"]
+
+    L["Prevalence estimates, Post-stratified by year, adjusted for misclassification"]
+
+A --> B
+B -- Training/Testing Sample --> D
+B -- Analytical Sample --> C
+D --> H1 --> F --> G
+C --> E --> H2 --> I
+G --> I
+E -- OA from metadata --> OA
+I --> I2 --> J
+J --> KOD & KOM & KPR
+KOD & KOM & KPR -- Applied to all SI papers --> L
+OA --> L
+J --> L
+```
+
+
+![A flowchart of the full research process. All steps described are further explained in the methodologic report and the supplements found in the OSF repository.](img/research-flow.svg){#fig-flowchart-pipeline width=100%}
